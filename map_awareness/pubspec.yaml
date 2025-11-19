@@ -35,6 +35,14 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  #curl to get access to the AutobahnAPI
+  flutter_curl: ^0.7.0
+
+  #curl needs it
+  ffi: ^2.1.4
+
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
