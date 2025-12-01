@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:map_awareness/autobahn_api.dart';
+import 'package:map_awareness/APIs/autobahn_api.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Map awareness Home Page'),
     );
   }
 }
@@ -59,7 +59,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
 
         //button now starts test method instead of counting
-        test();
+        testAutobahnAPI();
     });
   }
 

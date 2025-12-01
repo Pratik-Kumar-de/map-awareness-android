@@ -5,7 +5,7 @@ import 'package:map_awareness/api_data.dart';
 List<AutobahnRoadworks> listRoadworks = [];
 
 //Test method
-Future<void> test()
+Future<void> testAutobahnAPI()
 async {
 
   // Initialize client
@@ -53,6 +53,6 @@ final res = await client.send(Request(
 } else {
   //print("Request failed with status: ${res.statusCode}");
 }
-print(listRoadworks);
+print(listRoadworks[0].title);
 
 }
