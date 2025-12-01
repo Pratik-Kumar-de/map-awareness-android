@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:map_awareness/APIs/autobahn_api.dart';
+import 'package:map_awareness/APIs/map_api.dart';
 
 void main() {
   runApp(const MyApp());
@@ -59,7 +60,8 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
 
         //button now starts test method instead of counting
-        testAutobahnAPI();
+        //testAutobahnAPI();
+        testMap();
     });
   }
 
