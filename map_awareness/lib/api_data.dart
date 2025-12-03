@@ -22,4 +22,5 @@ class AutobahnRoadworks{
     required this.title,
     required this.description
   });
+
 }
