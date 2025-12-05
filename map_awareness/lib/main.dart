@@ -58,10 +58,12 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   void _incrementCounter() {
     setState(() {
+        //button calls test methods
 
-        //button now starts test method instead of counting
-        //testAutobahnAPI();
-        testMap();
+        testAutobahnAPI("A1");
+
+        //"53.084,8.798", "53.538,10.033" example bremen to hamburg
+        routing("53.084,8.798", "53.538,10.033");
     });
   }
 

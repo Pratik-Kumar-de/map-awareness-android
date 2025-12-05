@@ -1,11 +1,40 @@
 import 'dart:convert';
 import 'package:flutter_curl/flutter_curl.dart';
-import 'package:map_awareness/api_data.dart';
 
+class AutobahnRoadworks{
+  final String identifier;
+  final String isBlocked;
+  final String extent;
+  //final String point;
+  final String startLcPosition;
+  //final String impact;
+  final String subtitle;
+  final String title;
+  final List<dynamic> description;
+
+
+  AutobahnRoadworks({
+    required this.identifier,
+    required this.isBlocked,
+    required this.extent,
+    //required this.point,
+    required this.startLcPosition,
+    required this.subtitle,
+    required this.title,
+    required this.description
+  });
+}
+
+//example url for A1
+//"https://verkehr.autobahn.de/o/autobahn/A1/services/roadworks"
 List<AutobahnRoadworks> listRoadworks = [];
 
+String AutobahnURL1 = "https://verkehr.autobahn.de/o/autobahn/";
+String AutobahnURL2 = "/services/roadworks";
+
+
 //Test method
-Future<void> testAutobahnAPI()
+Future<void> testAutobahnAPI(String autobahnName)
 async {
 
   // Initialize client
@@ -20,7 +49,7 @@ await client.init();
 // Send request
 final res = await client.send(Request(
       method: "GET",
-      url: "https://verkehr.autobahn.de/o/autobahn/A1/services/roadworks",
+      url: AutobahnURL1 + autobahnName + AutobahnURL2,
       headers: {
 
       },
@@ -53,6 +82,6 @@ final res = await client.send(Request(
 } else {
   //print("Request failed with status: ${res.statusCode}");
 }
-//print(listRoadworks[0].title);
 
+print(listRoadworks[0].title);
 }
