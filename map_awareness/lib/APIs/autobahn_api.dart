@@ -29,8 +29,8 @@ class AutobahnRoadworks{
 //"https://verkehr.autobahn.de/o/autobahn/A1/services/roadworks"
 List<AutobahnRoadworks> listRoadworks = [];
 
-String AutobahnURL1 = "https://verkehr.autobahn.de/o/autobahn/";
-String AutobahnURL2 = "/services/roadworks";
+String autobahnURL1 = "https://verkehr.autobahn.de/o/autobahn/";
+String autobahnURL2 = "/services/roadworks";
 
 
 //Test method
@@ -49,7 +49,7 @@ await client.init();
 // Send request
 final res = await client.send(Request(
       method: "GET",
-      url: AutobahnURL1 + autobahnName + AutobahnURL2,
+      url: autobahnURL1 + autobahnName + autobahnURL2,
       headers: {
 
       },
@@ -83,5 +83,5 @@ final res = await client.send(Request(
   //print("Request failed with status: ${res.statusCode}");
 }
 
-print(listRoadworks[0].title);
+//print(listRoadworks[0].title);
 }

@@ -12,11 +12,11 @@ class RoutingWidgetData{
 }
 
 
-Future<List<RoutingWidgetData>> GetAllRoadworksData(String coordinate1, String coordinate2){
+List<RoutingWidgetData> getAllRoadworksData(String coordinate1, String coordinate2){
   List<RoutingWidgetData> listOfRoadworks = [];
-  Future<List<dynamic>> streetNames = routing(coordinate1, coordinate2);
+  List<String> streetNames = routing(coordinate1, coordinate2) as List<String>;
   
-  for(int i = 0; i < streetNames.size; i++){
+  for(int i = 0; i < streetNames.length; i++){
     //check if streetname is Autobahn
     //get raodworks from Autobahn
     //get only roadwokrs which are in coordinates
