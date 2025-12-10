@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
 }
 
 /// Main scaffold with 3 tabs:
-/// 1) Routes  (Marvin's Autobahn + routing test)
+/// 1) Routes
 /// 2) Location & Radius (my feature)
 /// 3) Map     (placeholder for later)
 class MainScaffold extends StatefulWidget {
@@ -86,10 +86,8 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 }
 
-/// ----------------------
 /// 1) ROUTES PAGE (old MyHomePage)
-/// This still calls `testAutobahnAPI` and `routing` when user presses + button.
-/// ----------------------
+
 class RoutesPage extends StatefulWidget {
   const RoutesPage({super.key});
 
@@ -128,16 +126,8 @@ class _RoutesPageState extends State<RoutesPage> {
   }
 }
 
-/// ----------------------
 /// 2) LOCATION & RADIUS PAGE
-/// This comes from my own file: pages/location_radius_page.dart
-/// (nothing to do here in main.dart, just navigation)
-/// ----------------------
-/// class LocationRadiusPage is imported from the other file.
 
-/// ----------------------
-/// 3) SIMPLE MAP PAGE (placeholder)
-/// ----------------------
 class MapPage extends StatelessWidget {
   const MapPage({super.key});
 
