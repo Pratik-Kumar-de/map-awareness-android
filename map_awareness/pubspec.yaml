@@ -41,6 +41,10 @@ dependencies:
   #curl needs it
   ffi: ^2.1.4
 
+  #decode polylines to get coordinates from graphopper
+  flutter_polyline_points: ^2.0.0 # Oder die neueste Version
+
+
 
 
 dev_dependencies:
