@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:map_awareness/APIs/autobahn_api.dart';
-import 'package:map_awareness/APIs/map_api.dart';
-import 'package:map_awareness/pages/location_radius_page.dart'; // <- my page
+import 'package:map_awareness/pages/location_radius_page.dart';
+import 'package:map_awareness/routing.dart'; // <- my page
 
 void main() {
   runApp(const MyApp());
@@ -98,11 +97,8 @@ class RoutesPage extends StatefulWidget {
 class _RoutesPageState extends State<RoutesPage> {
   void _callApis() {
     setState(() {
-      // button calls test methods from the Autobahn + map API files
-      testAutobahnAPI("A1");
-
       // Example coordinates: Bremen -> Hamburg
-      routing("53.084,8.798", "53.538,10.033");
+      getAllRoadworksData("53.084,8.798", "53.538,10.033");
     });
   }
 

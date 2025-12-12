@@ -14,7 +14,7 @@ String autobahnList2 = "/autobahn/";
 
 List<String> routeStreetNames = [];
 
-//needs to be a new class(String name, PointLatLng start, PointLatLng end)
+/// String name, PointLatLng start, PointLatLng end
 class AutobahnClass{
   final String name;
   final PointLatLng start;
@@ -29,7 +29,7 @@ class AutobahnClass{
 
 List<AutobahnClass> listOfAutobahnenAndCoordinates = [];
 
-//gets all street names in a car route between 2 coordinate points
+///gets all street names in a car route between 2 coordinate points
 Future<List<AutobahnClass>> routing(String startingPoint, String endPoint)
 async {
 
@@ -99,7 +99,7 @@ String mapURL = mapURLStart + startingPoint + point2 + endPoint +mapURLend;
   }
 }
 
-//checks if road is a Autobahn
+///returns a list of every Autobahn
 Future<Map<String, dynamic>> isAutobahn() async {
   String roadname = "o";
   String mapURL = autobahnList1 + roadname + autobahnList2;
@@ -136,5 +136,4 @@ Future<Map<String, dynamic>> isAutobahn() async {
   }
 
   return data;
-
 }

@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:flutter_curl/flutter_curl.dart';
 
+/// String extent gives coordinates, String Subtitle, String title, List(dynamic) description
 class AutobahnRoadworks{
-  final String identifier;
-  final String isBlocked;
+  //final String identifier;
+  //final String isBlocked;
   final String extent;
   //final String point;
-  final String startLcPosition;
+  //final String startLcPosition;
   //final String impact;
   final String subtitle;
   final String title;
@@ -14,11 +15,11 @@ class AutobahnRoadworks{
 
 
   AutobahnRoadworks({
-    required this.identifier,
-    required this.isBlocked,
+    //required this.identifier,
+    //required this.isBlocked,
     required this.extent,
     //required this.point,
-    required this.startLcPosition,
+    //required this.startLcPosition,
     required this.subtitle,
     required this.title,
     required this.description
@@ -34,7 +35,7 @@ String autobahnURL2 = "/services/roadworks";
 
 
 //Test method
-Future<void> testAutobahnAPI(String autobahnName)
+Future<List<AutobahnRoadworks>> getAllAutobahnRoadworks(String autobahnName)
 async {
 
   // Initialize client
@@ -65,23 +66,19 @@ final res = await client.send(Request(
   for(int i = 0; i < data["roadworks"].length; i++){
     listRoadworks.add(
       AutobahnRoadworks(
-        identifier: data["roadworks"][i]["identifier"],
-         isBlocked: data["roadworks"][i]["isBlocked"],
+        //identifier: data["roadworks"][i]["identifier"],
+         //isBlocked: data["roadworks"][i]["isBlocked"],
           extent: data["roadworks"][i]["extent"],
            //point: data["roadworks"][i]["data"],
-            startLcPosition: data["roadworks"][i]["startLcPosition"],
+            //startLcPosition: data["roadworks"][i]["startLcPosition"],
              subtitle: data["roadworks"][i]["subtitle"],
               title: data["roadworks"][i]["title"],
                description: data["roadworks"][i]["description"]
               )
     );
   }
-
-
-
 } else {
   //print("Request failed with status: ${res.statusCode}");
 }
-
-//print(listRoadworks[0].title);
+return listRoadworks;
 }
