@@ -8,16 +8,20 @@ import 'package:map_awareness/APIs/map_api.dart';
 class RoutingWidgetData{
   final String title;
   final List<dynamic> description;
+  final String time;
 
   RoutingWidgetData({
     required this.title,
-    required this.description
+    required this.description,
+    required this.time
   });
 }
 
-
-Future<List<RoutingWidgetData>> getAllRoadworksData(String coordinate1, String coordinate2) async {
+///gets a list of all roadworks in a route. inlcuding planned roadworks
+Future<List<List<RoutingWidgetData>>> getRoutingWidgetData(String coordinate1, String coordinate2) async {
   List<RoutingWidgetData> listOfRoadworks = [];
+  List<RoutingWidgetData> shortTermRoadworks = [];
+  List<RoutingWidgetData> listOfFutureRoadWorks = [];
 
   List<AutobahnClass> listOfAutobahn = await routing(coordinate1, coordinate2);
   
@@ -45,17 +49,41 @@ Future<List<RoutingWidgetData>> getAllRoadworksData(String coordinate1, String c
       double vectorEnd = coordinateVectorLength(center, pointsOfRoadWorks[1]);
 
       if(vectorStart <= radius || vectorEnd <= radius){
-        //add roadwork to List
-        //print(" found Roadwork!");
+        if(fullListOfRoadworks[j].startTimestamp != '0'){
+          //future roadworks
+          listOfFutureRoadWorks.add(RoutingWidgetData(
+            title: fullListOfRoadworks[j].title,
+             description: fullListOfRoadworks[j].description,
+              time: fullListOfRoadworks[j].startTimestamp
+             ));
+        }
+        else if(fullListOfRoadworks[j].displayType == 'SHORT_TERM_ROADWORKS'){
+          //add short_term_roadworks to seperate list
+          shortTermRoadworks.add(RoutingWidgetData(
+            title: fullListOfRoadworks[j].title,
+             description: fullListOfRoadworks[j].description,
+              time: fullListOfRoadworks[j].startTimestamp
+          ));
+        }
+        else{
+          //ongoing roadworks
         listOfRoadworks.add(RoutingWidgetData(
           title: fullListOfRoadworks[j].title,
-           description: fullListOfRoadworks[j].description));
+           description: fullListOfRoadworks[j].description,
+            time: "ongoing"
+           ));
+        }
       }
       //else outside of route and ignore roadwork and ignore
     }
     //get only roadwokrs which are in coordinates
   }
-  return listOfRoadworks;
+  List<List<RoutingWidgetData>> listOfCurrentAndFutureRoadworks= [];
+  listOfCurrentAndFutureRoadworks.add(listOfRoadworks);
+  listOfCurrentAndFutureRoadworks.add(shortTermRoadworks);
+  listOfCurrentAndFutureRoadworks.add(listOfFutureRoadWorks);
+
+  return listOfCurrentAndFutureRoadworks;
 }
 
 ///calculates the length of the vector between the 2 coordinates
@@ -77,4 +105,9 @@ List<PointLatLng> getCoordinatesFromExtent(String stringExtent){
   list.add(PointLatLng(double.parse(stringList[2]), double.parse(stringList[3])));
 
   return list;
+}
+
+bool roadworkStarted(String timeStamp){
+  
+  return true;
 }

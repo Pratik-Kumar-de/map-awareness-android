@@ -11,7 +11,9 @@ class AutobahnRoadworks{
   //final String impact;
   final String subtitle;
   final String title;
+  final String startTimestamp;
   final List<dynamic> description;
+  final String displayType;
 
 
   AutobahnRoadworks({
@@ -22,7 +24,9 @@ class AutobahnRoadworks{
     //required this.startLcPosition,
     required this.subtitle,
     required this.title,
-    required this.description
+    required this.startTimestamp,
+    required this.description,
+    required this.displayType
   });
 }
 
@@ -63,7 +67,12 @@ final res = await client.send(Request(
   Map<String, dynamic> data = jsonDecode(jsonString);
   //print("Parsed JSON data: $data");
   //print(data["roadworks"][0]["identifier"]);
+
   for(int i = 0; i < data["roadworks"].length; i++){
+
+    if(data["roadworks"][i]["startTimestamp"] == null){
+      data["roadworks"][i]["startTimestamp"] = "0";
+    }
     listRoadworks.add(
       AutobahnRoadworks(
         //identifier: data["roadworks"][i]["identifier"],
@@ -73,7 +82,9 @@ final res = await client.send(Request(
             //startLcPosition: data["roadworks"][i]["startLcPosition"],
              subtitle: data["roadworks"][i]["subtitle"],
               title: data["roadworks"][i]["title"],
-               description: data["roadworks"][i]["description"]
+               description: data["roadworks"][i]["description"],
+                startTimestamp: data["roadworks"][i]["startTimestamp"],
+                 displayType: data["roadworks"][i]["display_type"]
               )
     );
   }

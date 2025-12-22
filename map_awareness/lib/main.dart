@@ -98,7 +98,7 @@ class _RoutesPageState extends State<RoutesPage> {
   void _callApis() {
     setState(() {
       // Example coordinates: Bremen -> Hamburg
-      getAllRoadworksData("53.084,8.798", "53.538,10.033");
+      getRoutingWidgetData("53.084,8.798", "53.538,10.033");
     });
   }
 
