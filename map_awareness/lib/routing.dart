@@ -3,87 +3,105 @@ import 'dart:math';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:map_awareness/APIs/autobahn_api.dart';
 import 'package:map_awareness/APIs/map_api.dart';
+import 'package:map_awareness/models/saved_route.dart';
 
 ///contains all data from entrys of the Route feature
 class RoutingWidgetData{
   final String title;
-  final List<dynamic> description;
+  final String subtitle;
   final String time;
+  final String displayType;
+  final String? length;
+  final String? speedLimit;
+  final String? maxWidth;
+  final bool isBlocked;
 
   RoutingWidgetData({
     required this.title,
-    required this.description,
-    required this.time
+    required this.subtitle,
+    required this.time,
+    required this.displayType,
+    this.length,
+    this.speedLimit,
+    this.maxWidth,
+    this.isBlocked = false,
   });
+
+  String get typeLabel {
+    switch (displayType) {
+      case 'SHORT_TERM_ROADWORKS':
+        return 'Short-term';
+      case 'ROADWORKS':
+        return 'Roadworks';
+      default:
+        return displayType.isEmpty ? 'Unknown' : displayType;
+    }
+  }
+  
+  /// Summary line: combines length, speed, width
+  String get infoSummary {
+    final parts = <String>[];
+    if (length != null) parts.add(length!);
+    if (speedLimit != null) parts.add('Max. $speedLimit');
+    if (maxWidth != null) parts.add('Width: $maxWidth');
+    return parts.isEmpty ? '' : parts.join(' | ');
+  }
 }
 
-///gets a list of all roadworks in a route. inlcuding planned roadworks
-Future<List<List<RoutingWidgetData>>> getRoutingWidgetData(String coordinate1, String coordinate2) async {
-  List<RoutingWidgetData> listOfRoadworks = [];
-  List<RoutingWidgetData> shortTermRoadworks = [];
-  List<RoutingWidgetData> listOfFutureRoadWorks = [];
+/// Converts AutobahnRoadworks to RoutingWidgetData
+RoutingWidgetData _toWidgetData(AutobahnRoadworks rw) => RoutingWidgetData(
+  title: rw.title,
+  subtitle: rw.subtitle,
+  time: rw.startTimestamp != '0' ? rw.startTimestamp : 'ongoing',
+  displayType: rw.displayType,
+  length: rw.length,
+  speedLimit: rw.speedLimit,
+  maxWidth: rw.maxWidth,
+  isBlocked: rw.isBlocked,
+);
 
-  List<AutobahnClass> listOfAutobahn = await routing(coordinate1, coordinate2);
-  
-  for(int i = 0; i < listOfAutobahn.length; i++){
-    
-    //get all roadworks from Autobahn
-    List<AutobahnRoadworks> fullListOfRoadworks = [];
-    fullListOfRoadworks = await getAllAutobahnRoadworks(listOfAutobahn[i].name);
-
-    //check if roadwork is between coordinates
-    //calculate the Radius between the Autobahn coordinates
-    double radius = coordinateVectorLength(listOfAutobahn[i].start, listOfAutobahn[i].end) / 2;
-
-    double centerLat = (listOfAutobahn[i].start.latitude + listOfAutobahn[i].end.latitude) / 2;
-    double centerLng = (listOfAutobahn[i].start.longitude + listOfAutobahn[i].end.longitude) / 2;
-
-    PointLatLng center = PointLatLng(centerLat, centerLng);
-
-    //checks if roadwork is within radius
-    for(int j = 0; j < fullListOfRoadworks.length; j++){
-
-      List<PointLatLng> pointsOfRoadWorks = getCoordinatesFromExtent(fullListOfRoadworks[j].extent);
-
-      double vectorStart = coordinateVectorLength(center, pointsOfRoadWorks[0]);
-      double vectorEnd = coordinateVectorLength(center, pointsOfRoadWorks[1]);
-
-      if(vectorStart <= radius || vectorEnd <= radius){
-        if(fullListOfRoadworks[j].startTimestamp != '0'){
-          //future roadworks
-          listOfFutureRoadWorks.add(RoutingWidgetData(
-            title: fullListOfRoadworks[j].title,
-             description: fullListOfRoadworks[j].description,
-              time: fullListOfRoadworks[j].startTimestamp
-             ));
-        }
-        else if(fullListOfRoadworks[j].displayType == 'SHORT_TERM_ROADWORKS'){
-          //add short_term_roadworks to seperate list
-          shortTermRoadworks.add(RoutingWidgetData(
-            title: fullListOfRoadworks[j].title,
-             description: fullListOfRoadworks[j].description,
-              time: fullListOfRoadworks[j].startTimestamp
-          ));
-        }
-        else{
-          //ongoing roadworks
-        listOfRoadworks.add(RoutingWidgetData(
-          title: fullListOfRoadworks[j].title,
-           description: fullListOfRoadworks[j].description,
-            time: "ongoing"
-           ));
-        }
-      }
-      //else outside of route and ignore roadwork and ignore
-    }
-    //get only roadwokrs which are in coordinates
+/// Categorizes roadwork into ongoing/short-term/future lists
+void _categorizeRoadwork(AutobahnRoadworks rw, List<RoutingWidgetData> ongoing, List<RoutingWidgetData> shortTerm, List<RoutingWidgetData> future) {
+  final data = _toWidgetData(rw);
+  if (rw.startTimestamp != '0' && rw.displayType != 'SHORT_TERM_ROADWORKS') {
+    future.add(data);
+  } else if (rw.displayType == 'SHORT_TERM_ROADWORKS') {
+    shortTerm.add(data);
+  } else {
+    ongoing.add(data);
   }
-  List<List<RoutingWidgetData>> listOfCurrentAndFutureRoadworks= [];
-  listOfCurrentAndFutureRoadworks.add(listOfRoadworks);
-  listOfCurrentAndFutureRoadworks.add(shortTermRoadworks);
-  listOfCurrentAndFutureRoadworks.add(listOfFutureRoadWorks);
+}
 
-  return listOfCurrentAndFutureRoadworks;
+/// Checks if roadwork is within route segment
+bool _isRoadworkInSegment(AutobahnRoadworks rw, PointLatLng center, double radius) {
+  final points = getCoordinatesFromExtent(rw.extent);
+  return coordinateVectorLength(center, points[0]) <= radius ||
+         coordinateVectorLength(center, points[1]) <= radius;
+}
+
+/// Gets all roadworks along a route
+Future<List<List<RoutingWidgetData>>> getRoutingWidgetData(String coordinate1, String coordinate2) async {
+  final ongoing = <RoutingWidgetData>[];
+  final shortTerm = <RoutingWidgetData>[];
+  final future = <RoutingWidgetData>[];
+
+  final autobahnList = await routing(coordinate1, coordinate2);
+  
+  for (final autobahn in autobahnList) {
+    final roadworks = await getAllAutobahnRoadworks(autobahn.name);
+    final radius = coordinateVectorLength(autobahn.start, autobahn.end) / 2;
+    final center = PointLatLng(
+      (autobahn.start.latitude + autobahn.end.latitude) / 2,
+      (autobahn.start.longitude + autobahn.end.longitude) / 2,
+    );
+
+    for (final rw in roadworks) {
+      if (_isRoadworkInSegment(rw, center, radius)) {
+        _categorizeRoadwork(rw, ongoing, shortTerm, future);
+      }
+    }
+  }
+  return [ongoing, shortTerm, future];
 }
 
 ///calculates the length of the vector between the 2 coordinates
@@ -107,7 +125,38 @@ List<PointLatLng> getCoordinatesFromExtent(String stringExtent){
   return list;
 }
 
-bool roadworkStarted(String timeStamp){
-  
-  return true;
+/// Gets roadwork data using cached Autobahn segments (skips route API call)
+Future<List<List<RoutingWidgetData>>> getRoutingWidgetDataFromCache(List<AutobahnData> cachedSegments) async {
+  final ongoing = <RoutingWidgetData>[];
+  final shortTerm = <RoutingWidgetData>[];
+  final future = <RoutingWidgetData>[];
+
+  for (final segment in cachedSegments) {
+    final roadworks = await getAllAutobahnRoadworks(segment.name);
+    final start = PointLatLng(segment.startLat, segment.startLng);
+    final end = PointLatLng(segment.endLat, segment.endLng);
+    final radius = coordinateVectorLength(start, end) / 2;
+    final center = PointLatLng(
+      (segment.startLat + segment.endLat) / 2,
+      (segment.startLng + segment.endLng) / 2,
+    );
+
+    for (final rw in roadworks) {
+      if (_isRoadworkInSegment(rw, center, radius)) {
+        _categorizeRoadwork(rw, ongoing, shortTerm, future);
+      }
+    }
+  }
+  return [ongoing, shortTerm, future];
+}
+
+///converts AutobahnClass list to AutobahnData list for storage
+List<AutobahnData> autobahnClassToData(List<AutobahnClass> autobahnList) {
+  return autobahnList.map((a) => AutobahnData(
+    name: a.name,
+    startLat: a.start.latitude,
+    startLng: a.start.longitude,
+    endLat: a.end.latitude,
+    endLng: a.end.longitude,
+  )).toList();
 }

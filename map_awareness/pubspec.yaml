@@ -35,14 +35,12 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
-  #curl to get access to the AutobahnAPI
-  flutter_curl: ^0.7.0
-
-  #curl needs it
-  ffi: ^2.1.4
-
   #decode polylines to get coordinates from graphopper
   flutter_polyline_points: ^2.0.0 # Oder die neueste Version
+
+  #local storage for saving routes
+  shared_preferences: ^2.2.0
+  http: ^1.6.0
 
 
 
