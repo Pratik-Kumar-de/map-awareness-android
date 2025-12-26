@@ -1,58 +1,59 @@
 # Map Awareness
 
-Flutter app for route planning with Autobahn API and GraphHopper integration.
+Flutter application aggregating traffic, weather, and emergency data for route planning in Germany.
 
-## Requirements
+## Integrations
 
-- Flutter SDK `^3.9.2`
-- Dart SDK (included with Flutter)
+*   **Maps & Routing**: OpenStreetMap via `flutter_map`, GraphHopper API.
+*   **Traffic Data**: Autobahn GmbH API (Roadworks, Warnings).
+*   **Weather Data**: DWD API (Warnings), Open-Meteo API (Conditions).
+*   **Emergency Alerts**: NINA API (Federal Office for Civil Protection).
+*   **Analysis**: Google Gemini API (Data summarization).
 
-## Setup
+## Technical Stack
 
-```bash
-# Install dependencies
-flutter pub get
-```
-
-## Run
-
-```bash
-# Debug mode (hot reload)
-flutter run
-
-# Specific platform
-flutter run -d windows
-flutter run -d chrome
-flutter run -d android
-```
-
-## Test
-
-```bash
-# Run tests
-flutter test
-
-# Run with coverage
-flutter test --coverage
-```
-
-## Build
-
-```bash
-# Release build
-flutter build windows
-flutter build apk
-flutter build web
-```
+*   **Framework**: Flutter `^3.9.2`
+*   **Language**: Dart
+*   **Local Storage**: `shared_preferences`
+*   **HTTP Client**: `http` package
 
 ## Project Structure
 
 ```
 lib/
-├── APIs/         # Autobahn & GraphHopper API clients
-├── models/       # Data models (SavedRoute, SavedLocation)
-├── pages/        # UI pages
-├── services/     # Storage service
-├── main.dart     # Entry point
-└── routing.dart  # Route logic
+├── APIs/         # External API clients
+├── components/   # Shared UI components
+├── models/       # Data models and JSON serialization
+├── screens/      # Info screens
+│   ├── map/      # Map layer logic
+│   ├── routes/   # Route calculation and management
+│   ├── settings/ # Configuration
+│   └── warnings/ # Warning data display
+├── services/     # Data persistence and caching
+├── widgets/      # Reusable widgets
+└── main.dart     # Entry point
+```
+
+## Commands
+
+### Setup
+
+```bash
+flutter pub get
+```
+
+### Run
+
+```bash
+flutter run
+# Platform specific
+flutter run -d windows
+flutter run -d android
+```
+
+### Build
+
+```bash
+flutter build windows
+flutter build apk
 ```
