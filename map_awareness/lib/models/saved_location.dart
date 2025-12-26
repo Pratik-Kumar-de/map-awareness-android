@@ -27,14 +27,18 @@ class SavedLocation {
     'longitude': longitude,
   };
 
-  factory SavedLocation.fromJson(Map<String, dynamic> json) => SavedLocation(
-    id: json['id'],
-    name: json['name'],
-    locationText: json['locationText'],
-    radiusKm: json['radiusKm'],
-    createdAt: DateTime.parse(json['createdAt']),
-    latitude: json['latitude'],
-    longitude: json['longitude'],
-  );
+  factory SavedLocation.fromJson(Map<String, dynamic> json) {
+    final radiusRaw = json['radiusKm'];
+    final latRaw = json['latitude'];
+    final lngRaw = json['longitude'];
+    return SavedLocation(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      locationText: json['locationText']?.toString() ?? '',
+      radiusKm: radiusRaw is num ? radiusRaw.toDouble() : 20.0,
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      latitude: latRaw is num ? latRaw.toDouble() : null,
+      longitude: lngRaw is num ? lngRaw.toDouble() : null,
+    );
+  }
 }
-

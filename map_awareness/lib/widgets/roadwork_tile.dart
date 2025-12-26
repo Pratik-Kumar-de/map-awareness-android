@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:map_awareness/routing.dart';
+import 'package:map_awareness/models/routing_data.dart';
 
 /// Displays a collapsible summary of roadworks on a route.
 class RoadworksSummary extends StatelessWidget {
@@ -10,23 +10,42 @@ class RoadworksSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     final total = roadworks[0].length + roadworks[1].length + roadworks[2].length;
-    // Combine all roadworks with their category colors
-    final all = [
-      ...roadworks[0].map((r) => (r, Colors.orange)),
-      ...roadworks[1].map((r) => (r, Colors.amber)),
-      ...roadworks[2].map((r) => (r, Colors.blue)),
+    // [ongoing, shortTerm, future]
+    // Use theme colors directly instead of raw material colors
+    final items = [
+      ...roadworks[0].map((r) => (r, colorScheme.error)),
+      ...roadworks[1].map((r) => (r, colorScheme.tertiary)),
+      ...roadworks[2].map((r) => (r, colorScheme.secondary)),
     ];
     
-    return Card(
-      child: ExpansionTile(
-        leading: const Icon(Icons.construction, color: Colors.orange),
-        title: Text('$total Roadworks on Route'),
-        subtitle: Text(
-          '${roadworks[0].length} ongoing • ${roadworks[1].length} short-term • ${roadworks[2].length} future',
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
+    // Semantics wrapper suppresses Windows accessibility bug (Flutter #179563)
+    return Semantics(
+      excludeSemantics: true,
+      child: Card(
+        elevation: 0,
+        color: colorScheme.surfaceContainer,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: colorScheme.outlineVariant),
         ),
-        children: all.map((item) => RoadworkTile(data: item.$1, color: item.$2)).toList(),
+        clipBehavior: Clip.antiAlias,
+        child: ExpansionTile(
+          key: const PageStorageKey<String>('roadworks_summary'),
+          initiallyExpanded: false,
+          leading: Icon(Icons.construction, color: colorScheme.primary),
+          title: Text('$total Roadworks on Route', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          subtitle: Text(
+            '${roadworks[0].length} ongoing • ${roadworks[1].length} short-term • ${roadworks[2].length} future',
+            style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+          ),
+          backgroundColor: colorScheme.surfaceContainer,
+          shape: const Border(),
+          children: items.map((item) => RoadworkTile(data: item.$1, color: item.$2)).toList(),
+        ),
       ),
     );
   }
@@ -41,36 +60,48 @@ class RoadworkTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return ListTile(
       dense: true,
       leading: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(4),
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
           data.typeLabel,
-          style: TextStyle(
-            fontSize: 10,
-            color: HSLColor.fromColor(color).withLightness(0.3).toColor(),
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: color,
             fontWeight: FontWeight.bold,
           ),
         ),
       ),
-      title: Text(data.title, style: const TextStyle(fontSize: 13)),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (data.subtitle.isNotEmpty)
-            Text(data.subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-          if (data.infoSummary.isNotEmpty)
-            Text(data.infoSummary, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
-        ],
-      ),
+      title: Text(data.title, style: theme.textTheme.bodyMedium),
+      subtitle: (data.subtitle.isEmpty && data.infoSummary.isEmpty) 
+          ? null 
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (data.subtitle.isNotEmpty)
+                  Text(data.subtitle, style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
+                if (data.infoSummary.isNotEmpty)
+                  Text(
+                    data.infoSummary, 
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w500
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
       trailing: Text(
-        data.time == 'ongoing' ? '⏱' : '📅 ${_formatTimestamp(data.time)}',
-        style: const TextStyle(fontSize: 10, color: Colors.grey),
+        data.time == 'ongoing' ? 'Now' : _formatTimestamp(data.time),
+        style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.outline),
       ),
     );
   }
@@ -79,9 +110,9 @@ class RoadworkTile extends StatelessWidget {
   String _formatTimestamp(String timestamp) {
     try {
       final dt = DateTime.parse(timestamp);
-      return '${dt.day}.${dt.month}.${dt.year.toString().substring(2)}';
+      return '${dt.day}.${dt.month}.';
     } catch (e) {
-      return timestamp;
+      return '';
     }
   }
 }

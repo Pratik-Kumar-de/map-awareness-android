@@ -43,9 +43,18 @@ class StorageService {
     await prefs.setString(_routesKey, jsonEncode(jsonList));
   }
 
-  static Future<void> saveLocation(SavedLocation location) async {
+  /// Returns true if saved successfully, false if duplicate exists
+  static Future<bool> saveLocation(SavedLocation location) async {
     final prefs = await SharedPreferences.getInstance();
     final locations = await loadLocations();
+    
+    // Check for duplicate by name (case-insensitive)
+    final duplicateIndex = locations.indexWhere(
+      (l) => l.name.toLowerCase() == location.name.toLowerCase() && l.id != location.id
+    );
+    if (duplicateIndex >= 0) {
+      return false; // Duplicate exists
+    }
     
     final existingIndex = locations.indexWhere((l) => l.id == location.id);
     if (existingIndex >= 0) {
@@ -53,6 +62,16 @@ class StorageService {
     } else {
       locations.add(location);
     }
+    
+    final jsonList = locations.map((l) => l.toJson()).toList();
+    await prefs.setString(_locationsKey, jsonEncode(jsonList));
+    return true;
+  }
+
+  static Future<void> deleteLocation(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final locations = await loadLocations();
+    locations.removeWhere((l) => l.id == id);
     
     final jsonList = locations.map((l) => l.toJson()).toList();
     await prefs.setString(_locationsKey, jsonEncode(jsonList));
@@ -69,13 +88,7 @@ class StorageService {
     final jsonList = jsonDecode(jsonString) as List;
     return jsonList.map((e) => SavedLocation.fromJson(e)).toList();
   }
-
-  static Future<void> deleteLocation(String id) async {
-    final prefs = await SharedPreferences.getInstance();
-    final locations = await loadLocations();
-    locations.removeWhere((l) => l.id == id);
-    
-    final jsonList = locations.map((l) => l.toJson()).toList();
-    await prefs.setString(_locationsKey, jsonEncode(jsonList));
-  }
 }
+
+
+

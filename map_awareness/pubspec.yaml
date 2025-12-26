@@ -31,21 +31,27 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-
   #decode polylines to get coordinates from graphopper
-  flutter_polyline_points: ^2.0.0 # Oder die neueste Version
+  flutter_polyline_points: ^3.1.0
 
   #local storage for saving routes
   shared_preferences: ^2.2.0
+
   http: ^1.6.0
+  flutter_map: ^8.0.0
+  latlong2: ^0.9.1
+  geolocator: ^14.0.2
+  intl: ^0.20.2
+  google_generative_ai: ^0.4.6
+  flex_color_scheme: ^8.4.0
+  google_fonts: ^6.3.3
+
 
 
 
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.14.4
   flutter_test:
     sdk: flutter
 
@@ -54,7 +60,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -68,9 +74,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
