@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 
-/// Premium card with shadow and optional gradient
+/// Reusable card widget with configurable elevation, shadows, and gradient support.
 class PremiumCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -40,7 +40,7 @@ class PremiumCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(borderRadius),
           child: Padding(
-            padding: padding ?? const EdgeInsets.all(AppTheme.spacing16),
+            padding: padding ?? const EdgeInsets.all(AppTheme.spacingMd),
             child: child,
           ),
         ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 
-/// Primary gradient action button
+/// Primary action button with gradient background, loading state, and animation.
 class GradientButton extends StatelessWidget {
   final String label;
   final IconData? icon;
@@ -24,7 +24,7 @@ class GradientButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: AppTheme.durationFast,
+      duration: AppTheme.animFast,
       width: expanded ? double.infinity : null,
       decoration: BoxDecoration(
         gradient: onPressed != null ? (gradient ?? AppTheme.primaryGradient) : null,
@@ -38,7 +38,7 @@ class GradientButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: isLoading ? null : () {
-            HapticFeedback.mediumImpact();
+            Haptics.medium();
             onPressed?.call();
           },
           borderRadius: BorderRadius.circular(AppTheme.radiusSm),

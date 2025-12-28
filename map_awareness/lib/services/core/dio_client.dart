@@ -1,18 +1,27 @@
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
+import 'package:dio_smart_retry/dio_smart_retry.dart';
 
-/// Centralized Dio HTTP client with caching
+/// Caching http client.
 class DioClient {
   static final Dio instance = _createDio();
   static late final CacheOptions cacheOptions;
 
+  /// Creates and configures the Dio instance with timeouts and memory caching.
   static Dio _createDio() {
     final dio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 15),
     ));
 
-    // Memory cache
+    // Retry interceptor.
+    dio.interceptors.add(RetryInterceptor(
+      dio: dio,
+      retries: 2,
+      retryDelays: const [Duration(seconds: 1), Duration(seconds: 2)],
+    ));
+
+    // Memory cache.
     cacheOptions = CacheOptions(
       store: MemCacheStore(),
       policy: CachePolicy.request,
@@ -23,7 +32,7 @@ class DioClient {
     return dio;
   }
 
-  /// Get with short cache (15 min) for frequently changing data
+  /// Returns options for a short-term cache (15 minutes).
   static Options shortCache() => cacheOptions
       .copyWith(
         policy: CachePolicy.forceCache,
@@ -31,7 +40,7 @@ class DioClient {
       )
       .toOptions();
 
-  /// Get with long cache (24h) for stable data
+  /// Returns options for a long-term cache (24 hours).
   static Options longCache() => cacheOptions
       .copyWith(
         policy: CachePolicy.forceCache,
@@ -39,7 +48,7 @@ class DioClient {
       )
       .toOptions();
 
-  /// Force refresh, bypass cache
+  /// Returns options to force a cache refresh.
   static Options noCache() => cacheOptions
       .copyWith(policy: CachePolicy.refresh)
       .toOptions();

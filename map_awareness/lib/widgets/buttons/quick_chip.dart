@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 
-/// Quick action chip button
+/// Quick chip button.
 class QuickChip extends StatelessWidget {
   final String label;
   final IconData? icon;
@@ -30,11 +30,11 @@ class QuickChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppTheme.radiusXl),
       child: InkWell(
         onTap: () {
-          HapticFeedback.selectionClick();
+          Haptics.select();
           onTap?.call();
         },
         onLongPress: () {
-          HapticFeedback.heavyImpact();
+          Haptics.heavy();
           onLongPress?.call();
         },
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),

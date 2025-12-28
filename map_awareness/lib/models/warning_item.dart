@@ -1,15 +1,17 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import 'package:map_awareness/models/dto/dto.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 import 'package:map_awareness/utils/helpers.dart';
 
-/// Severity with centralized colors
+/// Enum defining warning severity levels with associated metadata/colors.
 enum WarningSeverity {
-  minor(1, 'Minor', 'Low risk', AppTheme.severityMinor, Color(0xFF1E88E5)),
-  moderate(2, 'Moderate', 'Be prepared', AppTheme.severityModerate, Color(0xFFF57C00)),
-  severe(3, 'Severe', 'Take action', AppTheme.severitySevere, Color(0xFFE65100)),
-  extreme(4, 'Extreme', 'Immediate danger', AppTheme.severityExtreme, Color(0xFFC62828));
+  minor(1, 'Minor', 'Low risk', AppTheme.severityMinor, AppTheme.severityMinorDark),
+  moderate(2, 'Moderate', 'Be prepared', AppTheme.severityModerate, AppTheme.severityModerateDark),
+  severe(3, 'Severe', 'Take action', AppTheme.severitySevere, AppTheme.severitySevereDark),
+  extreme(4, 'Extreme', 'Immediate danger', AppTheme.severityExtreme, AppTheme.severityExtremeDark);
 
   final int level;
   final String label;
@@ -20,6 +22,7 @@ enum WarningSeverity {
 
   List<Color> get gradient => [color, darkColor];
 
+  /// Maps numeric level (1-4) to Severity enum.
   static WarningSeverity fromLevel(int level) {
     if (level >= 4) return extreme;
     if (level >= 3) return severe;
@@ -28,7 +31,7 @@ enum WarningSeverity {
   }
 }
 
-/// Warning category for grouping & icons
+/// Enum categorizing warnings based on type/event strings.
 enum WarningCategory {
   weather,
   flood,
@@ -38,6 +41,7 @@ enum WarningCategory {
   environment,
   other;
 
+  /// Infers category from raw type and event strings using keyword matching.
   static WarningCategory fromType(String type, String event) {
     final lower = '${type.toLowerCase()} ${event.toLowerCase()}';
     if (lower.contains('flood') || lower.contains('water') || lower.contains('high water')) {
@@ -64,7 +68,7 @@ enum WarningCategory {
   }
 }
 
-/// Unified warning model for DWD and NINA with rich display info
+/// Unified domain model aggregating warnings from multiple sources (DWD, NINA, OpenMeteo).
 class WarningItem implements Comparable<WarningItem> {
   final String source;
   final WarningSeverity severity;
@@ -88,7 +92,7 @@ class WarningItem implements Comparable<WarningItem> {
     this.longitude,
   });
 
-  /// Sort by severity (highest first), then by start time (soonest first)
+  /// Sorts by severity then start time.
   @override
   int compareTo(WarningItem other) {
     final severityCompare = other.severity.level.compareTo(severity.level);
@@ -99,7 +103,7 @@ class WarningItem implements Comparable<WarningItem> {
     return 0;
   }
 
-  /// Creates from DWD warning
+  /// Adapts DWD API object to unified WarningItem.
   factory WarningItem.fromDWD(DwdWarningDto w) => WarningItem(
         source: 'DWD',
         severity: WarningSeverity.fromLevel(w.level),
@@ -110,7 +114,7 @@ class WarningItem implements Comparable<WarningItem> {
         endTime: w.end > 0 ? DateTime.fromMillisecondsSinceEpoch(w.end) : null,
       );
 
-  /// Creates from NINA warning
+  /// Adapts NINA API object to unified WarningItem.
   factory WarningItem.fromNINA(NinaWarningDto w) => WarningItem(
         source: 'NINA',
         severity: _severityFromString(w.severity),
@@ -120,7 +124,7 @@ class WarningItem implements Comparable<WarningItem> {
         startTime: w.sent.isNotEmpty ? DateTime.tryParse(w.sent) : null,
       );
 
-  /// Creates from OpenMeteo Air Quality data
+  /// Converts Air Quality DTO to a warning item if valid AQI exists.
   static WarningItem? fromOpenMeteoAirQuality(OpenMeteoAirQualityDto data) {
       final aqi = data.usAqi;
       if (aqi == null) return null;
@@ -137,11 +141,11 @@ class WarningItem implements Comparable<WarningItem> {
           category: WarningCategory.environment,
           title: 'Air Quality: $desc',
           description: 'US AQI: $aqi\nPM10: ${data.pm10} | PM2.5: ${data.pm25}',
-          startTime: DateTime.now(),
+          startTime: clock.now(),
       );
   }
 
-  /// Creates from OpenMeteo Flood/River data
+  /// Converts Flood DTO to a warning item if discharge data exists.
   static WarningItem? fromOpenMeteoFlood(OpenMeteoFloodDto data) {
      final discharge = data.riverDischarge;
      final unit = data.unit ?? 'm³/s';
@@ -154,7 +158,7 @@ class WarningItem implements Comparable<WarningItem> {
          category: WarningCategory.flood,
          title: 'River Discharge',
          description: 'Current Level: $discharge $unit',
-         startTime: DateTime.now(),
+         startTime: clock.now(),
      );
   }
 
@@ -167,41 +171,36 @@ class WarningItem implements Comparable<WarningItem> {
     }
   }
 
-  // --- Display helpers ---
+  // Display helpers.
 
-  /// Whether warning is currently active
+  /// Checks if active.
   bool get isActive {
-    final now = DateTime.now();
+    final now = clock.now();
     if (startTime != null && now.isBefore(startTime!)) return false;
     if (endTime != null && now.isAfter(endTime!)) return false;
     return true;
   }
 
-  /// Whether warning has ended
-  bool get hasEnded => endTime != null && DateTime.now().isAfter(endTime!);
+  /// Checks if ended.
+  bool get hasEnded => endTime != null && clock.now().isAfter(endTime!);
 
-  /// Formatted time range for display
+  /// Formats time range.
   String get formattedTimeRange => formatTimeRange(startTime, endTime);
 
-  /// Relative time description (e.g. "in 2 hours", "started 30 min ago")
+  /// Formats relative time.
   String get relativeTimeInfo {
-    final now = DateTime.now();
+    final now = clock.now();
 
     if (startTime != null && now.isBefore(startTime!)) {
-      final diff = startTime!.difference(now);
-      if (diff.inDays > 0) return 'Starts in ${diff.inDays}d';
-      if (diff.inHours > 0) return 'Starts in ${diff.inHours}h';
-      return 'Starts in ${diff.inMinutes}min';
+      return 'Starts ${timeago.format(startTime!, allowFromNow: true)}';
     }
 
     if (endTime != null) {
-      if (now.isAfter(endTime!)) return 'Ended';
-      final diff = endTime!.difference(now);
-      if (diff.inDays > 0) return 'Ends in ${diff.inDays}d';
-      if (diff.inHours > 0) return 'Ends in ${diff.inHours}h';
-      return 'Ends in ${diff.inMinutes}min';
+      if (now.isAfter(endTime!)) return 'Ended ${timeago.format(endTime!)}';
+      return 'Ends ${timeago.format(endTime!, allowFromNow: true)}';
     }
 
+    if (startTime != null) return 'Started ${timeago.format(startTime!)}';
     return 'Active now';
   }
 }

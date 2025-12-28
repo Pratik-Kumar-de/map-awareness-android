@@ -1,5 +1,4 @@
-/// ARS (Official Regional Key) lookup for German cities
-/// Extended coverage with major cities and their regions
+/// ARS code lookup for German cities.
 const Map<String, String> _arsLookup = {
   // City States
   'berlin': '11000000',
@@ -141,7 +140,7 @@ const Map<String, String> _arsLookup = {
   'neunkirchen': '10043000',
 };
 
-/// Looks up ARS code for a city name (case-insensitive, handles common variants)
+/// Resolves a city name to its corresponding ARS (Amtlicher Regionalschlüssel) code for API queries.
 String? lookupARSForCity(String cityName) {
   final normalized = cityName.toLowerCase().trim();
   

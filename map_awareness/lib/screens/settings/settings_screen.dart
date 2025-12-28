@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:map_awareness/providers/app_providers.dart';
 import 'package:map_awareness/services/services.dart';
 import 'package:map_awareness/utils/app_theme.dart';
+import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/widgets/common/premium_card.dart';
 
-class SettingsScreen extends StatefulWidget {
+/// Screen for application settings and API key management.
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+/// State for SettingsScreen handling key visibility and persistence.
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _controller = TextEditingController();
   bool _hasKey = false, _isObscured = true, _isSaving = false;
 
@@ -28,22 +32,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  /// Fetches the stored API key and updates UI state.
   Future<void> _loadKey() async {
     final key = await ApiKeyService.getGeminiKey();
     if (mounted) setState(() { _hasKey = key != null && key.isNotEmpty; if (_hasKey) _controller.text = key!; });
   }
 
+  /// Persists the user-entered API key to secure storage.
   Future<void> _saveKey() async {
     if (_controller.text.trim().isEmpty) return;
-    HapticFeedback.mediumImpact();
+    Haptics.medium();
     setState(() => _isSaving = true);
     await ApiKeyService.setGeminiKey(_controller.text.trim());
     setState(() { _isSaving = false; _hasKey = true; });
     if (mounted) ToastService.success(context, 'Saved');
   }
 
+  /// Prompts for confirmation before removing the API key.
   Future<void> _clearKey() async {
-    HapticFeedback.heavyImpact();
+    Haptics.heavy();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => Dialog(
@@ -64,9 +71,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text('This will remove your Gemini API key from the app.', style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary), textAlign: TextAlign.center),
               const SizedBox(height: 24),
               Row(children: [
-                Expanded(child: TextButton(onPressed: () => Navigator.pop(ctx, false), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)), child: const Text('Cancel'))),
+                Expanded(child: TextButton(onPressed: () => ctx.pop(false), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)), child: const Text('Cancel'))),
                 const SizedBox(width: 12),
-                Expanded(child: FilledButton(onPressed: () => Navigator.pop(ctx, true), style: FilledButton.styleFrom(backgroundColor: AppTheme.error, padding: const EdgeInsets.symmetric(vertical: 14)), child: const Text('Delete'))),
+                Expanded(child: FilledButton(onPressed: () => ctx.pop(true), style: FilledButton.styleFrom(backgroundColor: AppTheme.error, padding: const EdgeInsets.symmetric(vertical: 14)), child: const Text('Delete'))),
               ]),
             ],
           ),
@@ -84,7 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: AppTheme.surface,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
@@ -94,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.fromLTRB(8, 8, 20, 16),
                 child: Row(children: [
                   IconButton(
-                    onPressed: () { HapticFeedback.selectionClick(); context.pop(); },
+                    onPressed: () { Haptics.select(); context.pop(); },
                     icon: const Icon(Icons.arrow_back_rounded),
                     style: IconButton.styleFrom(backgroundColor: Colors.white, padding: const EdgeInsets.all(12)),
                   ),
@@ -108,6 +115,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               sliver: SliverList(delegate: SliverChildListDelegate([
                 _buildAppInfoCard(theme),
                 const SizedBox(height: 20),
+                _buildThemeCard(theme),
+                const SizedBox(height: 20),
                 _buildApiKeyCard(theme),
                 const SizedBox(height: 20),
                 _buildPrivacyCard(theme),
@@ -120,6 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// Renders application metrics and branding.
   Widget _buildAppInfoCard(ThemeData theme) {
     return PremiumCard(
       child: Row(children: [
@@ -145,6 +155,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// Renders theme mode selector.
+  Widget _buildThemeCard(ThemeData theme) {
+    final themeMode = ref.watch(themeModeProvider);
+    final index = themeMode == ThemeMode.dark ? 1 : (themeMode == ThemeMode.system ? 2 : 0);
+
+    return PremiumCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: AppTheme.accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.palette_rounded, color: AppTheme.accent, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Text('Appearance', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 16),
+        SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 0, icon: Icon(Icons.light_mode_rounded, size: 18), label: Text('Light')),
+            ButtonSegment(value: 1, icon: Icon(Icons.dark_mode_rounded, size: 18), label: Text('Dark')),
+            ButtonSegment(value: 2, icon: Icon(Icons.auto_mode_rounded, size: 18), label: Text('System')),
+          ],
+          selected: {index},
+          onSelectionChanged: (s) async {
+            Haptics.select();
+            final newMode = AppTheme.themeModeFromIndex(s.first);
+            ref.read(themeModeProvider.notifier).state = newMode;
+            await StorageService.setThemeMode(s.first);
+          },
+          style: ButtonStyle(
+            visualDensity: VisualDensity.compact,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ]),
+    );
+  }
+
+  /// Renders the API key management interface.
   Widget _buildApiKeyCard(ThemeData theme) {
     return PremiumCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -210,6 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// Builds a card with privacy information regarding data handling.
   Widget _buildPrivacyCard(ThemeData theme) {
     return PremiumCard(
       child: Row(children: [

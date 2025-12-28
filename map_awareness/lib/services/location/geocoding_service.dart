@@ -3,29 +3,31 @@ import 'package:latlong2/latlong.dart';
 import 'package:map_awareness/services/core/dio_client.dart';
 import 'package:map_awareness/utils/string_utils.dart';
 
+/// Result object from a geocoding operation holding coordinates and a display name.
 class GeocodingResult {
   final LatLng point;
   final String displayName;
 
   GeocodingResult({required this.point, required this.displayName});
+  /// Formats the geographic point as a comma-separated latitude/longitude string.
   String get coordinates => '${point.latitude},${point.longitude}';
 }
 
-/// Centralized geocoding operations
+/// Service handling forward and reverse geocoding via GraphHopper API.
 class GeocodingService {
   static const apiKey = '95c5067c-b1d5-461f-823a-8ae69a6f6997';
   static const baseUrl = 'https://graphhopper.com/api/1';
 
   GeocodingService._();
 
-  /// Convert address to coordinates, handles both plain addresses and lat,lng formats
+  /// Converts input string to a coordinate string if it's already coordinates, or fetches them via search.
   static Future<String?> toCoords(String input) async {
     if (input.isCoordinates) return input.normalizeCoords;
     final results = await search(input, limit: 1);
     return results.isNotEmpty ? results.first.coordinates : null;
   }
 
-  /// Resolve input to human-readable name (reverse geocodes if coords)
+  /// Resolves a coordinate string to a human-readable place name if possible.
   static Future<String> resolveName(String input) async {
     if (input.isCoordinates) {
       final parts = input.split(',');
@@ -38,7 +40,7 @@ class GeocodingService {
     return input;
   }
 
-  /// Search locations by query, returns geocoding results
+  /// Performs a geocoding search query against the API.
   static Future<List<GeocodingResult>> search(String query, {int limit = 5}) async {
     try {
       final res = await DioClient.instance.get(
@@ -56,6 +58,7 @@ class GeocodingService {
     }
   }
 
+  /// Performs reverse geocoding to find the name of a place at the given coordinates.
   static Future<String?> getPlaceName(double lat, double lng) async {
     try {
       final res = await DioClient.instance.get(

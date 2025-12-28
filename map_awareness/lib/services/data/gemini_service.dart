@@ -1,28 +1,36 @@
+import 'package:clock/clock.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:map_awareness/models/dto/dto.dart';
 import 'package:map_awareness/models/warning_item.dart';
 import 'package:map_awareness/services/core/api_key_service.dart';
 
-// Cache for AI summaries (15 min TTL)
+// Caches AI summaries (15m TTL).
 final Map<String, _CachedSummary> _cache = {};
 
 class _CachedSummary {
   final String text;
   final DateTime time;
-  _CachedSummary(this.text) : time = DateTime.now();
-  bool get isValid => DateTime.now().difference(time).inMinutes < 15;
+  _CachedSummary(this.text) : time = clock.now();
+  bool get isValid => clock.now().difference(time).inMinutes < 15;
 }
 
+/// Service for generating AI summaries using Google's Gemini model.
 class GeminiService {
   GeminiService._();
 
-  /// Generates AI summary for route conditions
+  /// Removes expired entries from the local cache.
+  static void _cleanupCache() => _cache.removeWhere((_, v) => !v.isValid);
+
+  /// Generates a travel safety summary for a route by constructing a prompt with roadworks and warnings, then querying the AI.
   static Future<String> generateRouteSummary(
     List<RoadworkDto> roadworks,
     List<WarningItem> warnings,
     String start,
-    String end,
-  ) async {
+    String end, {
+    WeatherDto? departureWeather,
+    WeatherDto? arrivalWeather,
+  }) async {
+    _cleanupCache();
     final key = 'route:$start:$end:${roadworks.length}:${warnings.length}';
     if (_cache[key]?.isValid == true) return _cache[key]!.text;
 
@@ -34,16 +42,32 @@ class GeminiService {
     try {
       final model = GenerativeModel(model: 'gemini-2.5-flash-lite', apiKey: apiKey);
       final blockedCount = roadworks.where((r) => r.isBlocked).length;
+      
+      // Builds weather info.
+      String weatherInfo = '';
+      if (departureWeather != null) {
+        weatherInfo += '\nDeparture weather ($start): ${departureWeather.icon} ${departureWeather.description}, ${departureWeather.temperature?.toStringAsFixed(1)}°C';
+        if (departureWeather.precipitation != null && departureWeather.precipitation! > 0) {
+          weatherInfo += ', Rain: ${departureWeather.precipitation}mm';
+        }
+      }
+      if (arrivalWeather != null) {
+        weatherInfo += '\nArrival weather ($end): ${arrivalWeather.icon} ${arrivalWeather.description}, ${arrivalWeather.temperature?.toStringAsFixed(1)}°C';
+        if (arrivalWeather.precipitation != null && arrivalWeather.precipitation! > 0) {
+          weatherInfo += ', Rain: ${arrivalWeather.precipitation}mm';
+        }
+      }
+      
       final prompt = '''Generate a brief English travel safety summary (max 4 sentences) for driving from $start to $end.
 
 Route overview:
 - ${roadworks.length} total roadworks ($blockedCount blocked/closed)
-- ${warnings.length} active warnings
+- ${warnings.length} active warnings$weatherInfo
 
 Roadworks: ${roadworks.isEmpty ? 'None' : roadworks.take(5).map((r) => '${r.title} (${r.typeLabel}) - ${r.subtitle}\nDetails: ${r.descriptionText.replaceAll('\n', ' ')}\nImpact: Length ${r.length ?? 'N/A'}, Speed ${r.speedLimit ?? 'N/A'}, Width ${r.maxWidth ?? 'N/A'}\nStatus: ${r.timeInfo}').join(';\n')}
 Warnings: ${warnings.isEmpty ? 'None' : warnings.take(3).map((w) => '${w.title} - ${w.severity.label} (${w.category.name})\nSource: ${w.source}\nDetails: ${w.description.replaceAll('\n', ' ')}\nTime: ${w.relativeTimeInfo}').join(';\n')}
 
-Focus on: key hazards, recommended precautions, and overall trip outlook. Be concise and practical.''';
+Focus on: key hazards, weather impact on driving, recommended precautions, and overall trip outlook. Be concise and practical.''';
       
       final response = await model.generateContent([Content.text(prompt)]);
       final text = response.text ?? 'No summary available.';
@@ -54,18 +78,22 @@ Focus on: key hazards, recommended precautions, and overall trip outlook. Be con
     }
   }
 
-  /// Generates AI summary for location warnings, air quality, and flood data
+
+  /// Generates a safety summary for a specific location including warnings, air quality, flood, and weather data.
   static Future<String> generateLocationSummary(
     String location,
     List<WarningItem> warnings, {
     double? radiusKm,
     OpenMeteoAirQualityDto? airQuality,
     OpenMeteoFloodDto? floodData,
+    WeatherDto? currentWeather,
   }) async {
+    _cleanupCache();
     final radiusKey = radiusKm != null ? ':${radiusKm.toInt()}km' : '';
     final aqKey = airQuality != null ? ':aq${airQuality.usAqi}' : '';
     final floodKey = floodData != null ? ':fl${floodData.riverDischarge}' : '';
-    final key = 'loc:$location$radiusKey:${warnings.length}$aqKey$floodKey';
+    final weatherKey = currentWeather != null ? ':w${currentWeather.weatherCode}' : '';
+    final key = 'loc:$location$radiusKey:${warnings.length}$aqKey$floodKey$weatherKey';
     if (_cache[key]?.isValid == true) return _cache[key]!.text;
 
     final apiKey = await ApiKeyService.getGeminiKey();
@@ -78,7 +106,17 @@ Focus on: key hazards, recommended precautions, and overall trip outlook. Be con
       final radiusInfo = radiusKm != null ? ' within ${radiusKm.toInt()} km' : '';
       final severeCount = warnings.where((w) => w.severity.level >= 3).length;
       
-      // Build air quality info
+      // Builds weather info.
+      String weatherInfo = 'Not available';
+      if (currentWeather != null) {
+        weatherInfo = '${currentWeather.icon} ${currentWeather.description}, ${currentWeather.temperature?.toStringAsFixed(1)}°C';
+        if (currentWeather.windSpeed != null) weatherInfo += ', Wind: ${currentWeather.windSpeed!.toStringAsFixed(0)} km/h';
+        if (currentWeather.precipitation != null && currentWeather.precipitation! > 0) {
+          weatherInfo += ', Rain: ${currentWeather.precipitation}mm';
+        }
+      }
+      
+      // Builds air quality info.
       String airQualityInfo = 'Not available';
       if (airQuality != null) {
         final aqi = airQuality.usAqi;
@@ -87,7 +125,7 @@ Focus on: key hazards, recommended precautions, and overall trip outlook. Be con
         airQualityInfo = 'AQI: $aqi, PM2.5: ${pm25?.toStringAsFixed(1)} µg/m³, PM10: ${pm10?.toStringAsFixed(1)} µg/m³';
       }
       
-      // Build flood info
+      // Builds flood info.
       String floodInfo = 'Not available';
       if (floodData != null) {
         final discharge = floodData.riverDischarge;
@@ -99,13 +137,14 @@ Focus on: key hazards, recommended precautions, and overall trip outlook. Be con
       
 Current status:
 - ${warnings.length} weather/safety alerts ($severeCount severe/extreme)
+- Current Weather: $weatherInfo
 - Air Quality: $airQualityInfo
 - Flood Risk: $floodInfo
 - Categories: ${warnings.map((w) => w.category.name).toSet().join(', ')}
 
 Active warnings: ${warnings.isEmpty ? 'None' : warnings.take(5).map((w) => '${w.title} (${w.severity.label}) - ${w.source}\nCategory: ${w.category.name}\nDetails: ${w.description.replaceAll('\n', ' ')}\nTime: ${w.relativeTimeInfo}').join(';\n')}
 
-Focus on: immediate safety concerns including air quality health effects, flood risks, and practical advice for residents/visitors.''';
+Focus on: immediate safety concerns including weather conditions, air quality health effects, flood risks, and practical advice for residents/visitors.''';
       
       final response = await model.generateContent([Content.text(prompt)]);
       final text = response.text ?? 'No summary available.';

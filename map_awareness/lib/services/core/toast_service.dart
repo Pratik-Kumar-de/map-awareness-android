@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:toastification/toastification.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 
-/// Centralized toast notifications using toastification package
+/// Service wrapper for displaying toast notifications using toastification package.
 class ToastService {
   ToastService._();
 
@@ -22,6 +22,7 @@ class ToastService {
     _show(context, message, ToastificationType.info, AppTheme.info);
   }
 
+  /// Internal helper to show a toast with specific type and color configuration.
   static void _show(BuildContext context, String message, ToastificationType type, Color color) {
     toastification.show(
       context: context,

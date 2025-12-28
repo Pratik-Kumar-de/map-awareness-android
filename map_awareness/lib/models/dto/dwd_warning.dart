@@ -2,6 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'dwd_warning.g.dart';
 
+/// Data Transfer Object for DWD (German Weather Service) warnings.
 @JsonSerializable(createToJson: false)
 class DwdWarningDto {
   @JsonKey(name: 'type', defaultValue: 0)
@@ -39,6 +40,7 @@ class DwdWarningDto {
     required this.end,
   });
 
+  /// Returns the most detailed description available (descriptionText > description).
   String get effectiveDescription => descriptionText ?? description ?? '';
 
   factory DwdWarningDto.fromJson(Map<String, dynamic> json) => _$DwdWarningDtoFromJson(json);

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 
-/// Reusable info badge for displaying icon + label + optional value
+/// Info badge widget.
 class InfoBadge extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -21,7 +21,7 @@ class InfoBadge extends StatelessWidget {
     final c = color ?? AppTheme.textSecondary;
     
     if (value != null) {
-      // Two-line badge with label and value
+      // Two-line badge.
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
@@ -47,7 +47,7 @@ class InfoBadge extends StatelessWidget {
       );
     }
 
-    // Simple chip badge
+    // Simple chip badge.
     return Chip(
       avatar: Icon(icon, size: 14, color: c),
       label: Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500)),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:map_awareness/utils/helpers.dart';
 
-/// Unified map marker widget
+/// Circular map marker widget with customizable colors and tap behavior.
 class MapMarker extends StatelessWidget {
   final IconData icon;
   final Color backgroundColor;
@@ -16,6 +16,7 @@ class MapMarker extends StatelessWidget {
     this.onTap,
   });
 
+  /// Creates a smaller, inverted color variant for secondary or clustered markers.
   const MapMarker.small({
     super.key,
     required this.icon,
@@ -39,7 +40,7 @@ class MapMarker extends StatelessWidget {
     if (onTap != null) {
       return GestureDetector(
         onTap: () {
-          HapticFeedback.selectionClick();
+          Haptics.select();
           onTap!();
         },
         child: container,

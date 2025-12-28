@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 
-/// Secondary outlined button
+/// Secondary button.
 class SecondaryButton extends StatelessWidget {
   final String label;
   final IconData? icon;
@@ -27,7 +27,7 @@ class SecondaryButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: isLoading ? null : () {
-          HapticFeedback.selectionClick();
+          Haptics.select();
           onPressed?.call();
         },
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),

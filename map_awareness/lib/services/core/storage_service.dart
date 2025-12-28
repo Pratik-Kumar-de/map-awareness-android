@@ -3,66 +3,86 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:map_awareness/models/saved_route.dart';
 import 'package:map_awareness/models/saved_location.dart';
 
+/// Service for persistent storage of user-saved routes and locations using SharedPreferences.
 class StorageService {
   static const String _routesKey = 'saved_routes';
   static const String _locationsKey = 'saved_locations';
+  static const String _themeModeKey = 'theme_mode';
 
-  static Future<void> saveRoute(SavedRoute route) async {
+  /// Returns saved theme mode (0=light, 1=dark, 2=system). Default: 0 (light).
+  static Future<int> getThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
-    final routes = await loadRoutes();
+    return prefs.getInt(_themeModeKey) ?? 0;
+  }
+
+  /// Persists theme mode preference.
+  static Future<void> setThemeMode(int mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_themeModeKey, mode);
+  }
+
+  /// Generic helper to read a list of objects from shared preferences.
+  static Future<List<T>> _readList<T>(
+    String key,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(key);
+    if (jsonString == null || jsonString.isEmpty) return [];
     
+    final jsonList = jsonDecode(jsonString) as List;
+    return jsonList.map((e) => fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Generic helper to write a list of objects to shared preferences.
+  static Future<void> _writeList<T>(
+    String key,
+    List<T> items,
+    Map<String, dynamic> Function(T) toJson,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = items.map(toJson).toList();
+    await prefs.setString(key, jsonEncode(jsonList));
+  }
+
+  /// Saves or updates a route in the persistent store.
+  static Future<void> saveRoute(SavedRoute route) async {
+    final routes = await loadRoutes();
     final existingIndex = routes.indexWhere((r) => r.id == route.id);
     if (existingIndex >= 0) {
       routes[existingIndex] = route;
     } else {
       routes.add(route);
     }
-    
-    final jsonList = routes.map((r) => r.toJson()).toList();
-    await prefs.setString(_routesKey, jsonEncode(jsonList));
+    await _writeList(_routesKey, routes, (r) => r.toJson());
   }
 
+  /// Loads all saved routes.
   static Future<List<SavedRoute>> loadRoutes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_routesKey);
-    
-    if (jsonString == null || jsonString.isEmpty) {
+    try {
+      return await _readList(_routesKey, SavedRoute.fromJson);
+    } catch (_) {
+      // Skips corrupted entries.
       return [];
     }
-    
-    final jsonList = jsonDecode(jsonString) as List;
-    final routes = <SavedRoute>[];
-    for (final e in jsonList) {
-      try {
-        routes.add(SavedRoute.fromJson(e));
-      } catch (_) {
-        // Skip corrupted/old entries
-      }
-    }
-    return routes;
   }
 
+  /// Deletes a route by its ID.
   static Future<void> deleteRoute(String id) async {
-    final prefs = await SharedPreferences.getInstance();
     final routes = await loadRoutes();
     routes.removeWhere((r) => r.id == id);
-    
-    final jsonList = routes.map((r) => r.toJson()).toList();
-    await prefs.setString(_routesKey, jsonEncode(jsonList));
+    await _writeList(_routesKey, routes, (r) => r.toJson());
   }
 
-  /// Returns true if saved successfully, false if duplicate exists
+  /// Saves a location, preventing duplicates based on name.
   static Future<bool> saveLocation(SavedLocation location) async {
-    final prefs = await SharedPreferences.getInstance();
     final locations = await loadLocations();
     
-    // Check for duplicate by name (case-insensitive)
+    // Checks duplicates.
     final duplicateIndex = locations.indexWhere(
       (l) => l.name.toLowerCase() == location.name.toLowerCase() && l.id != location.id
     );
-    if (duplicateIndex >= 0) {
-      return false; // Duplicate exists
-    }
+    if (duplicateIndex >= 0) return false;
     
     final existingIndex = locations.indexWhere((l) => l.id == location.id);
     if (existingIndex >= 0) {
@@ -70,30 +90,18 @@ class StorageService {
     } else {
       locations.add(location);
     }
-    
-    final jsonList = locations.map((l) => l.toJson()).toList();
-    await prefs.setString(_locationsKey, jsonEncode(jsonList));
+    await _writeList(_locationsKey, locations, (l) => l.toJson());
     return true;
   }
 
+  /// Removes a saved location from storage by its ID.
   static Future<void> deleteLocation(String id) async {
-    final prefs = await SharedPreferences.getInstance();
     final locations = await loadLocations();
     locations.removeWhere((l) => l.id == id);
-    
-    final jsonList = locations.map((l) => l.toJson()).toList();
-    await prefs.setString(_locationsKey, jsonEncode(jsonList));
+    await _writeList(_locationsKey, locations, (l) => l.toJson());
   }
 
-  static Future<List<SavedLocation>> loadLocations() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_locationsKey);
-    
-    if (jsonString == null || jsonString.isEmpty) {
-      return [];
-    }
-    
-    final jsonList = jsonDecode(jsonString) as List;
-    return jsonList.map((e) => SavedLocation.fromJson(e)).toList();
-  }
+  /// Fetches all saved locations from the persistent store.
+  static Future<List<SavedLocation>> loadLocations() =>
+      _readList(_locationsKey, SavedLocation.fromJson);
 }

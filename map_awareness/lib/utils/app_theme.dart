@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Premium app theme with modern design tokens using FlexColorScheme
+/// Centralized design system definition including colors, spacing, shadows, and base theme configuration.
 class AppTheme {
   AppTheme._();
 
@@ -15,11 +15,18 @@ class AppTheme {
   static const Color info = Color(0xFF448AFF);
   static const Color civil = Color(0xFF7C4DFF);
 
-  // Severity Colors
+  // Severity Colors.
   static const Color severityMinor = Color(0xFF42A5F5);
+  static const Color severityMinorDark = Color(0xFF1E88E5);
+  
   static const Color severityModerate = Color(0xFFFFA000);
+  static const Color severityModerateDark = Color(0xFFF57C00);
+
   static const Color severitySevere = Color(0xFFFF6D00);
+  static const Color severitySevereDark = Color(0xFFE65100);
+
   static const Color severityExtreme = Color(0xFFE53935);
+  static const Color severityExtremeDark = Color(0xFFC62828);
   
   static const Color textPrimary = Color(0xFF0F172A);
   static const Color textSecondary = Color(0xFF64748B);
@@ -47,9 +54,17 @@ class AppTheme {
   static const double radiusLg = 20.0;
   static const double radiusXl = 28.0;
 
-  static const double spacing16 = 16.0;
-  static const Duration durationFast = Duration(milliseconds: 200);
-  static const Duration durationMedium = Duration(milliseconds: 400);
+  // Spacing tokens.
+  static const double spacingXs = 4.0;
+  static const double spacingSm = 8.0;
+  static const double spacingMd = 16.0;
+  static const double spacingLg = 24.0;
+  static const double spacingXl = 32.0;
+
+  // Animation durations.
+  static const Duration animFast = Duration(milliseconds: 150);
+  static const Duration animNormal = Duration(milliseconds: 300);
+  static const Duration animSlow = Duration(milliseconds: 500);
 
   static List<BoxShadow> elevatedShadow = [
     BoxShadow(color: primary.withValues(alpha: 0.12), blurRadius: 24, offset: const Offset(0, 8)),
@@ -58,6 +73,7 @@ class AppTheme {
 
   static Color get surface => Colors.white;
 
+  /// Generates the core light theme data using FlexColorScheme.
   static ThemeData get lightTheme => FlexThemeData.light(
         colors: const FlexSchemeColor(
           primary: primary,
@@ -102,6 +118,60 @@ class AppTheme {
           systemOverlayStyle: SystemUiOverlayStyle.dark,
         ),
       );
+
+  /// Generates the dark theme data using FlexColorScheme.
+  static ThemeData get darkTheme => FlexThemeData.dark(
+        colors: const FlexSchemeColor(
+          primary: primaryLight,
+          primaryContainer: Color(0xFF1565C0),
+          secondary: accentLight,
+          secondaryContainer: Color(0xFF00838F),
+          tertiary: Color(0xFFB388FF),
+          tertiaryContainer: Color(0xFF4527A0),
+          appBarColor: Color(0xFF263238),
+          error: error,
+        ),
+        surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+        blendLevel: 15,
+        subThemesData: const FlexSubThemesData(
+          blendOnLevel: 20,
+          useMaterial3Typography: true,
+          useM2StyleDividerInM3: true,
+          defaultRadius: radiusMd,
+          thinBorderWidth: 1.0,
+          filledButtonRadius: radiusSm,
+          elevatedButtonRadius: radiusSm,
+          outlinedButtonRadius: radiusSm,
+          inputDecoratorIsFilled: true,
+          inputDecoratorRadius: radiusMd,
+          inputDecoratorUnfocusedBorderIsColored: false,
+          navigationBarLabelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          navigationBarIndicatorSchemeColor: SchemeColor.primary,
+          navigationBarIndicatorOpacity: 0.15,
+          navigationBarSelectedLabelSchemeColor: SchemeColor.primary,
+          navigationBarSelectedIconSchemeColor: SchemeColor.primary,
+        ),
+        visualDensity: FlexColorScheme.comfortablePlatformDensity,
+        useMaterial3: true,
+        fontFamily: GoogleFonts.inter().fontFamily,
+      ).copyWith(
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: Colors.transparent,
+          centerTitle: false,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+        ),
+      );
+
+  /// Maps theme mode index to ThemeMode enum (0=light, 1=dark, 2=system).
+  static ThemeMode themeModeFromIndex(int index) {
+    switch (index) {
+      case 1: return ThemeMode.dark;
+      case 2: return ThemeMode.system;
+      default: return ThemeMode.light;
+    }
+  }
 }
 
 

@@ -88,6 +88,8 @@ flutter build windows --release
 ## Tech Stack
 - **Framework**: Flutter / Dart
 - **State**: Riverpod
-- **Maps**: Flutter Map (OSM)
-- **Data**: Dio, json_serializable
-- **Theming**: FlexColorScheme
+- **Maps**: Flutter Map (OSM), latlong2
+- **Data**: Dio, dio_smart_retry, json_serializable
+- **Theming**: FlexColorScheme, Google Fonts
+- **UI**: Toastification, Shimmer, Slidable, Page Transition
+- **Utils**: Timeago, Collection, Clock

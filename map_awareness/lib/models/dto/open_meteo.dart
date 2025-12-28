@@ -2,6 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'open_meteo.g.dart';
 
+/// Data Transfer Object for air quality metrics.
 @JsonSerializable(createToJson: false)
 class OpenMeteoAirQualityDto {
   @JsonKey(name: 'us_aqi')
@@ -22,6 +23,7 @@ class OpenMeteoAirQualityDto {
   factory OpenMeteoAirQualityDto.fromJson(Map<String, dynamic> json) => _$OpenMeteoAirQualityDtoFromJson(json);
 }
 
+/// Data Transfer Object for river discharge/flood data.
 @JsonSerializable(createToJson: false)
 class OpenMeteoFloodDto {
   @JsonKey(name: 'river_discharge')

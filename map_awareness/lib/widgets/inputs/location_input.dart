@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:map_awareness/utils/app_theme.dart';
+import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/widgets/common/premium_card.dart';
 
-/// Location input pair for routes (start/end with swap button)
+/// Widget providing dual text inputs (From/To) with location services, swapping, and map callbacks.
 class LocationInput extends StatelessWidget {
   final TextEditingController startController;
   final TextEditingController endController;
   final VoidCallback? onMyLocation;
   final VoidCallback? onSwap;
+  final VoidCallback? onMapSelectStart;
+  final VoidCallback? onMapSelectEnd;
   final bool isGettingLocation;
 
   const LocationInput({
@@ -17,8 +19,11 @@ class LocationInput extends StatelessWidget {
     required this.endController,
     this.onMyLocation,
     this.onSwap,
+    this.onMapSelectStart,
+    this.onMapSelectEnd,
     this.isGettingLocation = false,
   });
+
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +31,21 @@ class LocationInput extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _buildInput(context, controller: startController, label: 'From', hint: 'Starting point', icon: Icons.radio_button_on_rounded, iconColor: AppTheme.success, suffixWidget: _buildLocationButton()),
+          _buildInput(
+            context,
+            controller: startController,
+            label: 'From',
+            hint: 'Starting point',
+            icon: Icons.radio_button_on_rounded,
+            iconColor: AppTheme.success,
+            suffixWidget: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onMapSelectStart != null) _buildMapButton(onMapSelectStart!),
+                _buildLocationButton(),
+              ],
+            ),
+          ),
           Stack(
             alignment: Alignment.center,
             children: [
@@ -34,12 +53,22 @@ class LocationInput extends StatelessWidget {
               _SwapButton(onTap: onSwap),
             ],
           ),
-          _buildInput(context, controller: endController, label: 'To', hint: 'Destination', icon: Icons.location_on_rounded, iconColor: AppTheme.error),
+          _buildInput(
+            context,
+            controller: endController,
+            label: 'To',
+            hint: 'Destination',
+            icon: Icons.location_on_rounded,
+            iconColor: AppTheme.error,
+            suffixWidget: onMapSelectEnd != null ? _buildMapButton(onMapSelectEnd!) : null,
+          ),
         ],
       ),
     );
   }
 
+
+  /// Builds a specific text input field with associated styling and suffix.
   Widget _buildInput(BuildContext context, {required TextEditingController controller, required String label, required String hint, required IconData icon, required Color iconColor, Widget? suffixWidget}) {
     return TextField(
       controller: controller,
@@ -60,12 +89,13 @@ class LocationInput extends StatelessWidget {
     );
   }
 
+  /// Renders the "Use my location" button with loading state support.
   Widget _buildLocationButton() {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: isGettingLocation ? null : () {
-          HapticFeedback.lightImpact();
+          Haptics.light();
           onMyLocation?.call();
         },
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
@@ -78,8 +108,28 @@ class LocationInput extends StatelessWidget {
       ),
     );
   }
+
+  /// Renders a map selection button triggering the parent callback.
+  Widget _buildMapButton(VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Haptics.light();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        child: const Padding(
+          padding: EdgeInsets.all(12),
+          child: Icon(Icons.map_outlined, size: 20, color: AppTheme.accent),
+        ),
+      ),
+    );
+  }
 }
 
+
+/// Floating button to swap start and end input values.
 class _SwapButton extends StatelessWidget {
   final VoidCallback? onTap;
   const _SwapButton({this.onTap});
@@ -93,7 +143,7 @@ class _SwapButton extends StatelessWidget {
       shape: const CircleBorder(),
       child: InkWell(
         onTap: () {
-          HapticFeedback.mediumImpact();
+          Haptics.medium();
           onTap?.call();
         },
         customBorder: const CircleBorder(),
@@ -103,7 +153,7 @@ class _SwapButton extends StatelessWidget {
   }
 }
 
-/// Search field for warnings screen
+/// Standalone location search field with focus animation and integrated action buttons (Search, My Location, Save).
 class SearchField extends StatefulWidget {
   final TextEditingController controller;
   final String hintText;
@@ -128,13 +178,14 @@ class SearchField extends StatefulWidget {
   State<SearchField> createState() => _SearchFieldState();
 }
 
+/// State for SearchField managing focus status and visual feedback.
 class _SearchFieldState extends State<SearchField> {
   bool _isFocused = false;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: AppTheme.durationFast,
+      duration: AppTheme.animFast,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -160,7 +211,7 @@ class _SearchFieldState extends State<SearchField> {
             suffixIcon: _buildSuffixIcons(),
           ),
           onSubmitted: (_) {
-            HapticFeedback.selectionClick();
+            Haptics.select();
             widget.onSearch?.call();
           },
         ),
@@ -168,6 +219,7 @@ class _SearchFieldState extends State<SearchField> {
     );
   }
 
+  /// Builds row of action icons inside the search field.
   Widget _buildSuffixIcons() {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -175,9 +227,9 @@ class _SearchFieldState extends State<SearchField> {
         if (widget.isLoading)
           const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)))
         else if (widget.onMyLocation != null)
-          _ActionIcon(icon: Icons.my_location_rounded, onTap: () { HapticFeedback.lightImpact(); widget.onMyLocation?.call(); }, tooltip: 'My location'),
+          _ActionIcon(icon: Icons.my_location_rounded, onTap: () { Haptics.light(); widget.onMyLocation?.call(); }, tooltip: 'My location'),
         if (widget.onSave != null && !widget.isSaving)
-          _ActionIcon(icon: Icons.bookmark_add_outlined, onTap: () { HapticFeedback.mediumImpact(); widget.onSave?.call(); }, tooltip: 'Save location', color: AppTheme.accent),
+          _ActionIcon(icon: Icons.bookmark_add_outlined, onTap: () { Haptics.medium(); widget.onSave?.call(); }, tooltip: 'Save location', color: AppTheme.accent),
         if (widget.isSaving)
           const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))),
         const SizedBox(width: 8),
@@ -186,6 +238,7 @@ class _SearchFieldState extends State<SearchField> {
   }
 }
 
+/// Interactive icon button component for specialized search actions.
 class _ActionIcon extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;

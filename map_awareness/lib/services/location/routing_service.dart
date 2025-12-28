@@ -4,18 +4,28 @@ import 'package:map_awareness/services/core/dio_client.dart';
 import 'package:map_awareness/services/location/geocoding_service.dart';
 import 'package:map_awareness/services/data/traffic_service.dart';
 import 'package:map_awareness/models/saved_route.dart';
+import 'package:map_awareness/models/dto/dto.dart';
 
+
+/// Result object containing autobahn segments, decoded polyline points, and alternative routes.
 class RouteResult {
   final List<AutobahnData> autobahnList;
   final List<PointLatLng> polylinePoints;
+  final List<RouteAlternative> alternatives;
 
-  RouteResult({required this.autobahnList, required this.polylinePoints});
+  RouteResult({
+    required this.autobahnList,
+    required this.polylinePoints,
+    this.alternatives = const [],
+  });
 }
 
+
+/// Service for calculating routes and extracting autobahn segments.
 class RoutingService {
   RoutingService._();
 
-  /// Calculate route with polyline and autobahn segments
+  /// Calculates route between two points, decodes the polyline, and identifies autobahn segments.
   static Future<RouteResult> getRouteWithPolyline(String start, String end) async {
     try {
       final res = await DioClient.instance.get(
@@ -26,16 +36,20 @@ class RoutingService {
           'profile': 'car',
           'locale': 'de',
           'calc_points': 'true',
+          'alternative_route.max_paths': 3, // Max 3 alternatives
           'key': GeocodingService.apiKey,
         },
         options: DioClient.longCache(),
       );
 
-      final polyline = PolylinePoints.decodePolyline(res.data['paths'][0]['points']);
+      final paths = res.data['paths'] as List;
+      final mainPath = paths[0];
+      
+      final polyline = PolylinePoints.decodePolyline(mainPath['points']);
       final autobahnNames = await _getAutobahnList();
       final autobahns = <AutobahnData>[];
 
-      for (final ref in res.data['paths'][0]['details']['street_ref']) {
+      for (final ref in mainPath['details']['street_ref']) {
         if (ref[2] != null) {
           final name = (ref[2] as String).replaceAll(' ', '');
           if (autobahnNames.contains(name)) {
@@ -51,13 +65,22 @@ class RoutingService {
           }
         }
       }
-      return RouteResult(autobahnList: autobahns, polylinePoints: polyline);
+
+      // Parses alternative routes.
+      final alternatives = paths.skip(1).map((path) => RouteAlternative.fromJson(path)).toList();
+
+      return RouteResult(
+        autobahnList: autobahns,
+        polylinePoints: polyline,
+        alternatives: alternatives,
+      );
     } on DioException {
       return RouteResult(autobahnList: [], polylinePoints: []);
     }
   }
 
-  /// Get list of all autobahns
+
+  /// Fetches the list of available autobahns from the traffic API.
   static Future<Set<String>> _getAutobahnList() async {
     try {
       final res = await DioClient.instance.get(TrafficService.baseUrl, options: DioClient.longCache());

@@ -1,8 +1,10 @@
 import 'package:geolocator/geolocator.dart';
 
+/// Service for accessing device location and calculating distances.
 class LocationService {
   LocationService._();
 
+  /// Requests permission and retrieves the current device position.
   static Future<Position?> getCurrentLocation() async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -23,6 +25,7 @@ class LocationService {
     }
   }
 
+  /// Calculates the distance between two coordinates in kilometers.
   static double distanceInKm(double lat1, double lng1, double lat2, double lng2) {
     return Geolocator.distanceBetween(lat1, lng1, lat2, lng2) / 1000;
   }

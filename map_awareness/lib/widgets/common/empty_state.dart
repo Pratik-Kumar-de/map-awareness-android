@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:map_awareness/utils/app_theme.dart';
+import 'package:map_awareness/utils/app_animations.dart';
 
-/// Premium empty state with animated illustration
+/// Empty state widget.
 class EmptyStateWidget extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -26,10 +27,10 @@ class EmptyStateWidget extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Animated icon container
+            // Animated icon container.
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.8, end: 1.0),
-              duration: const Duration(milliseconds: 600),
+              duration: AppAnimations.slow,
               curve: Curves.elasticOut,
               builder: (context, value, child) => Transform.scale(
                 scale: value,
@@ -71,7 +72,7 @@ class EmptyStateWidget extends StatelessWidget {
             ),
             const SizedBox(height: 28),
 
-            // Title
+            // Title.
             Text(
               title,
               style: theme.textTheme.titleLarge?.copyWith(
@@ -82,7 +83,7 @@ class EmptyStateWidget extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
-            // Subtitle
+            // Subtitle.
             Text(
               subtitle,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -92,7 +93,7 @@ class EmptyStateWidget extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
 
-            // Optional action
+            // Optional action.
             if (action != null) ...[
               const SizedBox(height: 28),
               action!,

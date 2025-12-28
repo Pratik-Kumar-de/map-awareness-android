@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 import 'package:map_awareness/widgets/common/premium_card.dart';
 
-/// Stats row showing multiple stat items
+/// Widget for displaying a row of statistic items (value + label).
 class StatsRow extends StatelessWidget {
   final List<StatItem> items;
   const StatsRow({super.key, required this.items});
@@ -17,6 +17,7 @@ class StatsRow extends StatelessWidget {
     );
   }
 
+  /// Builds an individual statistic item with value and label.
   Widget _buildStat(BuildContext context, StatItem item) {
     return Column(
       children: [
@@ -41,6 +42,7 @@ class StatsRow extends StatelessWidget {
   }
 }
 
+/// Data model for an individual statistic entry.
 class StatItem {
   final String label;
   final String value;

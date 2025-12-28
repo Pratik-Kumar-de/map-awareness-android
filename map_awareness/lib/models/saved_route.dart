@@ -2,6 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'saved_route.g.dart';
 
+/// Data model representing a specific autobahn segment (start/end points).
 @JsonSerializable()
 class AutobahnData {
   final String name;
@@ -22,6 +23,7 @@ class AutobahnData {
   Map<String, dynamic> toJson() => _$AutobahnDataToJson(this);
 }
 
+/// Entity representing a fully defined user-saved route with segments and metadata.
 @JsonSerializable()
 class SavedRoute {
   final String id;

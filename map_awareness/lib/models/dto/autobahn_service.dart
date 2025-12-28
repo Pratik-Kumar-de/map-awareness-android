@@ -4,7 +4,7 @@ import 'geo_coordinate.dart';
 
 part 'autobahn_service.g.dart';
 
-/// Electric charging station from Autobahn API
+/// Data Transfer Object for electric charging stations on the autobahn.
 @JsonSerializable(createToJson: false)
 class ChargingStationDto {
   @JsonKey(defaultValue: '') final String identifier;
@@ -28,7 +28,7 @@ class ChargingStationDto {
   String get descriptionText => description?.join('\n') ?? '';
 }
 
-/// Rest area / parking from Autobahn API
+/// Data Transfer Object for parking areas, including lorry specific parking.
 @JsonSerializable(createToJson: false)
 class ParkingDto {
   @JsonKey(defaultValue: '') final String identifier;

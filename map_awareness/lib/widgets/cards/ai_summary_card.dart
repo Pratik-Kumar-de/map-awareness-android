@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/widgets/common/loading_shimmer.dart';
 import 'package:map_awareness/router/app_router.dart';
 import 'package:map_awareness/services/services.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 
-/// AI summary card with skeletonizer loading
+/// Widget for displaying AI-generated route summaries, handling loading and API key states.
 class AiSummaryCard extends StatefulWidget {
   final String? summary;
   final bool isLoading;
@@ -24,6 +24,7 @@ class AiSummaryCard extends StatefulWidget {
   State<AiSummaryCard> createState() => _AiSummaryCardState();
 }
 
+/// State for AiSummaryCard managing API key verification and reactive display.
 class _AiSummaryCardState extends State<AiSummaryCard> {
   bool? _hasApiKey;
 
@@ -33,6 +34,7 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
     _checkApiKey();
   }
 
+  /// Verifies existence of Gemini API key in storage.
   Future<void> _checkApiKey() async {
     final hasKey = await ApiKeyService.hasGeminiKey();
     if (mounted) setState(() => _hasApiKey = hasKey);
@@ -52,7 +54,7 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gradient header
+          // Gradient header.
           Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
             decoration: BoxDecoration(
@@ -86,7 +88,7 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
                   Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () { HapticFeedback.selectionClick(); widget.onRefresh?.call(); },
+                      onTap: () { Haptics.select(); widget.onRefresh?.call(); },
                       borderRadius: BorderRadius.circular(8),
                       child: Container(padding: const EdgeInsets.all(8), child: const Icon(Icons.refresh_rounded, size: 20, color: Color(0xFF7C4DFF))),
                     ),
@@ -95,13 +97,13 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
             ),
           ),
 
-          // Content
+          // Content.
           Padding(
             padding: const EdgeInsets.all(16),
             child: _hasApiKey == false ? _buildApiKeyHint(theme) : _buildContent(theme),
           ),
 
-          // Attribution
+          // Attribution.
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Row(
@@ -124,6 +126,7 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
     );
   }
 
+  /// Renders a prompt to configure the API key in settings if missing.
   Widget _buildApiKeyHint(ThemeData theme) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -151,7 +154,7 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: () async {
-                HapticFeedback.selectionClick();
+                Haptics.select();
                 AppRouter.goToSettings();
                 await Future.delayed(const Duration(milliseconds: 500));
                 _checkApiKey();
@@ -166,6 +169,7 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
     );
   }
 
+  /// Renders the summary content or loading shimmer based on state.
   Widget _buildContent(ThemeData theme) {
     if (widget.summary == null || widget.summary!.isEmpty) {
       if (widget.isLoading) {

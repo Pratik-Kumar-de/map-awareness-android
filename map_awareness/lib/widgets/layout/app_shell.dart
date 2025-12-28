@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/router/app_router.dart';
+import 'package:map_awareness/screens/routes/routes_screen.dart';
+import 'package:map_awareness/screens/warnings/warnings_screen.dart';
+import 'package:map_awareness/screens/map/map_screen.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 
-/// Main app shell with header and bottom navigation
-class AppShell extends ConsumerWidget {
+/// Root layout widget interacting with AppRouter to manage bottom navigation and page switching.
+class AppShell extends ConsumerStatefulWidget {
   final Widget child;
   const AppShell({super.key, required this.child});
+
+  @override
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+/// State for AppShell managing PageController and navigation synchronization.
+class _AppShellState extends ConsumerState<AppShell> {
+  late PageController _pageController;
+  int _currentPage = 0;
 
   static const _pages = [
     _PageConfig('Routes', 'Plan your journey', Icons.alt_route_rounded),
@@ -16,9 +28,54 @@ class AppShell extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currentIndex = AppRouter.currentIndex;
-    final page = _pages[currentIndex];
+  void initState() {
+    super.initState();
+    _currentPage = AppRouter.currentIndex;
+    _pageController = PageController(initialPage: _currentPage);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(AppShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final newIndex = AppRouter.currentIndex;
+    if (_currentPage != newIndex) {
+      setState(() => _currentPage = newIndex);
+      _pageController.jumpToPage(newIndex);
+    }
+  }
+
+  /// Handles page view updates and syncs with router.
+  void _onPageChanged(int index) {
+    if (_currentPage != index) {
+      setState(() => _currentPage = index);
+      Haptics.select();
+      switch (index) {
+        case 0: AppRouter.goToRoutes();
+        case 1: AppRouter.goToWarnings();
+        case 2: AppRouter.goToMap();
+      }
+    }
+  }
+
+  /// Handles bottom navigation taps, triggering smooth scroll animation.
+  void _onNavTap(int index) {
+    Haptics.select();
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final page = _pages[_currentPage];
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -27,24 +84,29 @@ class AppShell extends ConsumerWidget {
         child: Column(
           children: [
             _buildHeader(context, page),
-            Expanded(child: child),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: _onPageChanged,
+                physics: const BouncingScrollPhysics(),
+                children: const [
+                  RoutesScreen(),
+                  WarningsScreen(),
+                  MapScreen(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
       bottomNavigationBar: _BottomNav(
-        currentIndex: currentIndex,
-        onTap: (i) {
-          HapticFeedback.selectionClick();
-          switch (i) {
-            case 0: AppRouter.goToRoutes();
-            case 1: AppRouter.goToWarnings();
-            case 2: AppRouter.goToMap();
-          }
-        },
+        currentIndex: _currentPage,
+        onTap: _onNavTap,
       ),
     );
   }
 
+  /// Builds the dynamic header containing page title, icon, and settings button.
   Widget _buildHeader(BuildContext context, _PageConfig page) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 12, 16),
@@ -104,6 +166,7 @@ class AppShell extends ConsumerWidget {
   }
 }
 
+/// Internal configuration for a main navigation page.
 class _PageConfig {
   final String title;
   final String subtitle;
@@ -111,6 +174,7 @@ class _PageConfig {
   const _PageConfig(this.title, this.subtitle, this.icon);
 }
 
+/// Floating-style settings button for the app header.
 class _SettingsButton extends StatelessWidget {
   const _SettingsButton();
 
@@ -118,7 +182,7 @@ class _SettingsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton.filledTonal(
       onPressed: () {
-        HapticFeedback.selectionClick();
+        Haptics.select();
         AppRouter.goToSettings();
       },
       icon: const Icon(Icons.settings_outlined, size: 22),
@@ -134,6 +198,7 @@ class _SettingsButton extends StatelessWidget {
   }
 }
 
+/// Custom bottom navigation bar synchronized with the PageView.
 class _BottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -144,21 +209,24 @@ class _BottomNav extends StatelessWidget {
     return NavigationBar(
       selectedIndex: currentIndex,
       onDestinationSelected: (i) {
-        HapticFeedback.selectionClick();
+        Haptics.select();
         onTap(i);
       },
       destinations: const [
         NavigationDestination(
           icon: Icon(Icons.alt_route_rounded),
           label: 'Routes',
+          tooltip: '',
         ),
         NavigationDestination(
           icon: Icon(Icons.warning_amber_rounded),
           label: 'Warnings',
+          tooltip: '',
         ),
         NavigationDestination(
           icon: Icon(Icons.map_rounded),
           label: 'Map',
+          tooltip: '',
         ),
       ],
     );

@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-/// Reusable glass-morphism container for overlays
+/// Container widget that implements a glassmorphism effect using BackdropFilter and semi-transparent layers.
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -41,7 +41,10 @@ class GlassContainer extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: onTap != null
-            ? InkWell(onTap: () => onTap!(), borderRadius: BorderRadius.circular(borderRadius), child: box)
+            ? Material(
+                type: MaterialType.transparency,
+                child: InkWell(onTap: () => onTap!(), borderRadius: BorderRadius.circular(borderRadius), child: box),
+              )
             : box,
       ),
     );

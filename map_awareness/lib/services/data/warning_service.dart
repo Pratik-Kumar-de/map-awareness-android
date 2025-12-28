@@ -4,7 +4,7 @@ import 'package:map_awareness/models/dto/dto.dart';
 import 'package:map_awareness/models/warning_item.dart';
 import 'package:map_awareness/data/ars_lookup.dart';
 
-/// Handles DWD weather warnings and NINA civil protection alerts
+/// Manages retrieval and aggregation of warning data from DWD and NINA.
 class WarningService {
   static const _dwdBaseUrl = 'https://s3.eu-central-1.amazonaws.com/app-prod-static.warnwetter.de/v16';
   static const _ninaBaseUrl = 'https://warnung.bund.de/api31';
@@ -12,7 +12,7 @@ class WarningService {
   WarningService._();
 
 
-  /// Fetch all DWD weather warnings
+  /// Fetches weather warnings from DWD (German Weather Service).
   static Future<List<DwdWarningDto>> getDwdWarnings() async {
     try {
       final res = await DioClient.instance.get(
@@ -23,18 +23,19 @@ class WarningService {
       final list = res.data['warnings'] as List? ?? [];
       return list.map((w) => DwdWarningDto.fromJson(w as Map<String, dynamic>)).toList();
     } catch (_) {
+      // Silent fail: API unavailable or network error
       return [];
     }
   }
 
-  /// Fetch NINA warnings for a city name
+  /// Fetches NINA warnings for a specific city name by resolving its ARS code.
   static Future<List<NinaWarningDto>> getNinaWarningsForCity(String cityName) async {
     final ars = lookupARSForCity(cityName);
     if (ars == null) return [];
     return getNinaWarningsForArs(ars);
   }
 
-  /// Fetch NINA warnings for an ARS code
+  /// Fetches NINA warnings using the Amtlicher Regionalschlüssel (ARS).
   static Future<List<NinaWarningDto>> getNinaWarningsForArs(String ars) async {
     try {
       final arsPrefix = ars.length >= 5 ? ars.substring(0, 5) : ars;
@@ -46,19 +47,20 @@ class WarningService {
       final list = res.data as List? ?? [];
       return list.map((w) => NinaWarningDto.fromJson(w as Map<String, dynamic>)).toList();
     } catch (_) {
+      // Silent fail: API unavailable or network error
       return [];
     }
   }
 
-  /// Fetch and unify warnings for one or more cities
+  /// Aggregates warnings from DWD and NINA, ensuring uniqueness by title.
   static Future<List<WarningItem>> getUnifiedWarningsForCities(List<String> cities) async {
     final allWarnings = <WarningItem>[];
     
-    // Add DWD warnings (global/regional)
+    // Adds DWD warnings.
     final dwd = await getDwdWarnings();
     allWarnings.addAll(dwd.map(WarningItem.fromDWD));
 
-    // Add NINA warnings for each city
+    // Adds NINA warnings.
     final seenCities = <String>{};
     for (final city in cities) {
       final normalized = city.trim().toLowerCase();
@@ -68,7 +70,7 @@ class WarningService {
       allWarnings.addAll(nina.map(WarningItem.fromNINA));
     }
 
-    // Deduplicate by title
+    // Deduplicates by title.
     final seenTitles = <String>{};
     return allWarnings.where((w) => seenTitles.add(w.title)).toList()..sort();
   }

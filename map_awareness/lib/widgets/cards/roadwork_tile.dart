@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/models/dto/dto.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 
 
+/// Widget displaying aggregated roadworks summary (Current, Soon, Future) in an expandable tile.
 class RoadworksSummary extends StatelessWidget {
   final List<List<RoadworkDto>> roadworks;
   const RoadworksSummary({super.key, required this.roadworks});
@@ -63,13 +64,14 @@ class RoadworksSummary extends StatelessWidget {
           ]),
         ),
         shape: const Border(), collapsedShape: const Border(),
-        onExpansionChanged: (_) => HapticFeedback.selectionClick(),
+        onExpansionChanged: (_) => Haptics.select(),
         children: items.map((i) => _RoadworkCard(data: i.$1, color: i.$2, status: i.$3)).toList(),
       ),
     );
   }
 }
 
+/// Individual card widget for a single roadwork event within the summary.
 class _RoadworkCard extends StatelessWidget {
   final RoadworkDto data; final Color color; final String status;
   const _RoadworkCard({required this.data, required this.color, required this.status});
@@ -124,13 +126,14 @@ class _RoadworkCard extends StatelessWidget {
           decoration: BoxDecoration(gradient: LinearGradient(colors: [c, c.withValues(alpha: 0.8)]), borderRadius: BorderRadius.circular(16)),
           child: Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
         ),
-        onExpansionChanged: (_) => HapticFeedback.selectionClick(),
+        onExpansionChanged: (_) => Haptics.select(),
         children: [_Expanded(data: data, color: c)],
       ),
     );
   }
 }
 
+/// Component for the expanded detail view of a roadwork card.
 class _Expanded extends StatelessWidget {
   final RoadworkDto data; final Color color;
   const _Expanded({required this.data, required this.color});

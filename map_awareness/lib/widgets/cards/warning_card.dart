@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/models/warning_item.dart';
 
 import 'package:map_awareness/utils/app_theme.dart';
 
-/// Warning card using centralized severity colors
+/// Widget for displaying a warning item with expandable details.
 class WarningCard extends StatelessWidget {
   final WarningItem warning;
   final VoidCallback? onTap;
@@ -68,7 +68,7 @@ class WarningCard extends StatelessWidget {
           ),
           child: Text(warning.severity.label.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
         ),
-        onExpansionChanged: (_) => HapticFeedback.selectionClick(),
+        onExpansionChanged: (_) => Haptics.select(),
         children: [_ExpandedContent(warning: warning, colors: colors)],
       ),
     ),
@@ -76,6 +76,7 @@ class WarningCard extends StatelessWidget {
   }
 }
 
+/// Icon component indicating the severity and category of a warning.
 class _SeverityIcon extends StatelessWidget {
   final List<Color> colors;
   final WarningCategory category;
@@ -94,6 +95,7 @@ class _SeverityIcon extends StatelessWidget {
     );
   }
 
+  /// Maps warning category to specific icon data.
   IconData _getCategoryIcon(WarningCategory category) => switch (category) {
     WarningCategory.weather => Icons.thunderstorm_rounded,
     WarningCategory.flood => Icons.water_rounded,
@@ -105,6 +107,7 @@ class _SeverityIcon extends StatelessWidget {
   };
 }
 
+/// Component for the expanded detail view of a warning card.
 class _ExpandedContent extends StatelessWidget {
   final WarningItem warning;
   final List<Color> colors;
@@ -156,6 +159,7 @@ class _ExpandedContent extends StatelessWidget {
     );
   }
 
+  /// Builds a visual indicator for the warning's temporal status (active, ended, upcoming).
   Widget _buildStatusIndicator(ThemeData theme) {
     final Color statusColor;
     final String statusText;
