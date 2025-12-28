@@ -48,9 +48,9 @@ class WarningCard extends StatelessWidget {
               labelPadding: const EdgeInsets.only(right: 8),
             ),
             Chip(
-              avatar: Icon(warning.source == 'DWD' ? Icons.cloud_rounded : Icons.shield_rounded, size: 16, color: warning.source == 'DWD' ? AppTheme.info : const Color(0xFF7C4DFF)),
-              label: Text(warning.source, style: TextStyle(color: warning.source == 'DWD' ? AppTheme.info : const Color(0xFF7C4DFF), fontSize: 11, fontWeight: FontWeight.w600)),
-              backgroundColor: (warning.source == 'DWD' ? AppTheme.info : const Color(0xFF7C4DFF)).withValues(alpha: 0.1),
+              avatar: Icon(warning.source == 'DWD' ? Icons.cloud_rounded : Icons.shield_rounded, size: 16, color: warning.source == 'DWD' ? AppTheme.info : AppTheme.civil),
+              label: Text(warning.source, style: TextStyle(color: warning.source == 'DWD' ? AppTheme.info : AppTheme.civil, fontSize: 11, fontWeight: FontWeight.w600)),
+              backgroundColor: (warning.source == 'DWD' ? AppTheme.info : AppTheme.civil).withValues(alpha: 0.1),
               side: BorderSide.none,
               shape: const StadiumBorder(),
               visualDensity: VisualDensity.compact,

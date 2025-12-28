@@ -29,14 +29,10 @@ class RoadworkDto {
 
   String get descriptionText => description?.join('\n') ?? '';
 
-  String get formattedTimeRange {
-    if (startTimestamp == null || startTimestamp!.isEmpty) return 'Ongoing';
-    try {
-      return DateFormat('dd.MM.yyyy').format(DateTime.parse(startTimestamp!));
-    } catch (_) {
-      return startTimestamp!;
-    }
-  }
+  String get formattedTimeRange => formatTimeRange(
+    startTimestamp != null ? DateTime.tryParse(startTimestamp!) : null, 
+    null
+  );
 
   double? get latitude => coordinate?.latitude;
   double? get longitude => coordinate?.longitude;
@@ -62,13 +58,10 @@ class RoadworkDto {
     return d > 7 ? DateFormat('dd.MM').format(dt) : d > 0 ? 'In ${d}d' : 'Soon';
   }
 
+  String get relativeTimeInfo => timeInfo;
+
   bool isRoadworkInSegment(double minLat, double maxLat, double minLng, double maxLng) {
-    final lat = coordinate?.latitude;
-    final lng = coordinate?.longitude;
-    if (lat == null || lng == null) return true;
-    const buffer = 0.02;
-    return lat >= minLat - buffer && lat <= maxLat + buffer &&
-           lng >= minLng - buffer && lng <= maxLng + buffer;
+    return isCoordinateInBounds(coordinate?.latitude, coordinate?.longitude, minLat, maxLat, minLng, maxLng);
   }
 }
 

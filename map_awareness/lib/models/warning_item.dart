@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+
 import 'package:map_awareness/models/dto/dto.dart';
+import 'package:map_awareness/utils/app_theme.dart';
+import 'package:map_awareness/utils/helpers.dart';
 
 /// Severity with centralized colors
 enum WarningSeverity {
-  minor(1, 'Minor', 'Low risk', Color(0xFF42A5F5), Color(0xFF1E88E5)),
-  moderate(2, 'Moderate', 'Be prepared', Color(0xFFFFA000), Color(0xFFF57C00)),
-  severe(3, 'Severe', 'Take action', Color(0xFFFF6D00), Color(0xFFE65100)),
-  extreme(4, 'Extreme', 'Immediate danger', Color(0xFFE53935), Color(0xFFC62828));
+  minor(1, 'Minor', 'Low risk', AppTheme.severityMinor, Color(0xFF1E88E5)),
+  moderate(2, 'Moderate', 'Be prepared', AppTheme.severityModerate, Color(0xFFF57C00)),
+  severe(3, 'Severe', 'Take action', AppTheme.severitySevere, Color(0xFFE65100)),
+  extreme(4, 'Extreme', 'Immediate danger', AppTheme.severityExtreme, Color(0xFFC62828));
 
   final int level;
   final String label;
@@ -179,21 +181,7 @@ class WarningItem implements Comparable<WarningItem> {
   bool get hasEnded => endTime != null && DateTime.now().isAfter(endTime!);
 
   /// Formatted time range for display
-  String get formattedTimeRange {
-    final dateFormat = DateFormat('dd.MM, HH:mm');
-    final timeFormat = DateFormat('HH:mm');
-
-    if (startTime == null && endTime == null) return 'Ongoing';
-
-    if (startTime != null && endTime != null) {
-      if (startTime!.day == endTime!.day && startTime!.month == endTime!.month) {
-        return '${dateFormat.format(startTime!)} - ${timeFormat.format(endTime!)}';
-      }
-      return '${dateFormat.format(startTime!)} - ${dateFormat.format(endTime!)}';
-    }
-    if (startTime != null) return 'From ${dateFormat.format(startTime!)}';
-    return 'Until ${dateFormat.format(endTime!)}';
-  }
+  String get formattedTimeRange => formatTimeRange(startTime, endTime);
 
   /// Relative time description (e.g. "in 2 hours", "started 30 min ago")
   String get relativeTimeInfo {

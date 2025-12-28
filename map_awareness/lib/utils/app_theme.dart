@@ -13,6 +13,13 @@ class AppTheme {
   static const Color warning = Color(0xFFFFB300);
   static const Color error = Color(0xFFFF5252);
   static const Color info = Color(0xFF448AFF);
+  static const Color civil = Color(0xFF7C4DFF);
+
+  // Severity Colors
+  static const Color severityMinor = Color(0xFF42A5F5);
+  static const Color severityModerate = Color(0xFFFFA000);
+  static const Color severitySevere = Color(0xFFFF6D00);
+  static const Color severityExtreme = Color(0xFFE53935);
   
   static const Color textPrimary = Color(0xFF0F172A);
   static const Color textSecondary = Color(0xFF64748B);

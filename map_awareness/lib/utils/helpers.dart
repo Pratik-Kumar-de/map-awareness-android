@@ -1,26 +1,7 @@
-import 'dart:math' as math;
+import 'package:intl/intl.dart';
 
 /// Safe bool parser for JSON
 bool safeBool(dynamic v) => v == true || v == 'true';
-
-/// Simple bounding box for coordinates
-class Bounds {
-  final double minLat, maxLat, minLng, maxLng;
-  const Bounds(this.minLat, this.maxLat, this.minLng, this.maxLng);
-
-  factory Bounds.fromPoints(double lat1, double lng1, double lat2, double lng2) {
-    return Bounds(
-      math.min(lat1, lat2),
-      math.max(lat1, lat2),
-      math.min(lng1, lng2),
-      math.max(lng1, lng2),
-    );
-  }
-
-  bool contains(double lat, double lng, {double buffer = 0}) =>
-      lat >= minLat - buffer && lat <= maxLat + buffer &&
-      lng >= minLng - buffer && lng <= maxLng + buffer;
-}
 
 /// Finds value in list by prefix match
 String? findByPrefix(List<String>? lines, String prefix) {
@@ -29,4 +10,27 @@ String? findByPrefix(List<String>? lines, String prefix) {
     if (line.contains(prefix)) return line.replaceAll('$prefix:', '').trim();
   }
   return null;
+}
+
+/// Checks if coordinate is within bounds with buffer
+bool isCoordinateInBounds(double? lat, double? lng, double minLat, double maxLat, double minLng, double maxLng, {double buffer = 0.02}) {
+  if (lat == null || lng == null) return true;
+  return lat >= minLat - buffer && lat <= maxLat + buffer &&
+         lng >= minLng - buffer && lng <= maxLng + buffer;
+}
+
+/// Formats a time range string (e.g. "12.05, 14:00 - 16:00")
+String formatTimeRange(DateTime? start, DateTime? end) {
+  final df = DateFormat('dd.MM');
+  final tf = DateFormat('HH:mm');
+
+  if (start == null && end == null) return 'Ongoing';
+  if (start != null && end != null) {
+    if (start.day == end.day && start.month == end.month) {
+      return '${df.format(start)}, ${tf.format(start)} - ${tf.format(end)}';
+    }
+    return '${df.format(start)} - ${df.format(end)}';
+  }
+  if (start != null) return 'From ${df.format(start)}';
+  return 'Until ${df.format(end!)}';
 }

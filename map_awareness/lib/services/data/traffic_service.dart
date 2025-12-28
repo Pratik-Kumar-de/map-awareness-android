@@ -7,31 +7,19 @@ class TrafficService {
   static const baseUrl = 'https://verkehr.autobahn.de/o/autobahn/';
   TrafficService._();
 
-  /// Fetch roadworks for an autobahn
-  static Future<List<RoadworkDto>> getRoadworks(String name) async {
-    try {
-      final res = await DioClient.instance.get('$baseUrl$name/services/roadworks', options: DioClient.shortCache());
-      return (res.data['roadworks'] as List? ?? []).map((rw) => RoadworkDto.fromJson(rw)).toList();
-    } catch (_) {
-      return [];
-    }
-  }
+  static Future<List<RoadworkDto>> getRoadworks(String name) => 
+      _safeFetch('$baseUrl$name/services/roadworks', 'roadworks', RoadworkDto.fromJson);
 
-  /// Fetch electric charging stations for an autobahn
-  static Future<List<ChargingStationDto>> getChargingStations(String name) async {
-    try {
-      final res = await DioClient.instance.get('$baseUrl$name/services/electric_charging_station', options: DioClient.shortCache());
-      return (res.data['electric_charging_station'] as List? ?? []).map((s) => ChargingStationDto.fromJson(s)).toList();
-    } catch (_) {
-      return [];
-    }
-  }
+  static Future<List<ChargingStationDto>> getChargingStations(String name) => 
+      _safeFetch('$baseUrl$name/services/electric_charging_station', 'electric_charging_station', ChargingStationDto.fromJson);
 
-  /// Fetch parking/rest areas for an autobahn
-  static Future<List<ParkingDto>> getParkingAreas(String name) async {
+  static Future<List<ParkingDto>> getParkingAreas(String name) => 
+      _safeFetch('$baseUrl$name/services/parking_lorry', 'parking_lorry', ParkingDto.fromJson);
+
+  static Future<List<T>> _safeFetch<T>(String url, String key, T Function(Map<String, dynamic>) fromJson) async {
     try {
-      final res = await DioClient.instance.get('$baseUrl$name/services/parking_lorry', options: DioClient.shortCache());
-      return (res.data['parking_lorry'] as List? ?? []).map((p) => ParkingDto.fromJson(p)).toList();
+      final res = await DioClient.instance.get(url, options: DioClient.shortCache());
+      return (res.data[key] as List? ?? []).map((e) => fromJson(e)).toList();
     } catch (_) {
       return [];
     }
@@ -105,10 +93,13 @@ class TrafficService {
 
   static bool _matchesAnySegment(double? lat, double? lng, List<AutobahnData> segments, {bool nullMatches = false}) {
     if (lat == null || lng == null) return nullMatches;
-    const buffer = 0.02;
     for (final seg in segments) {
-      final bounds = Bounds.fromPoints(seg.startLat, seg.startLng, seg.endLat, seg.endLng);
-      if (bounds.contains(lat, lng, buffer: buffer)) return true;
+      final minLat = seg.startLat < seg.endLat ? seg.startLat : seg.endLat;
+      final maxLat = seg.startLat > seg.endLat ? seg.startLat : seg.endLat;
+      final minLng = seg.startLng < seg.endLng ? seg.startLng : seg.endLng;
+      final maxLng = seg.startLng > seg.endLng ? seg.startLng : seg.endLng;
+
+      if (isCoordinateInBounds(lat, lng, minLat, maxLat, minLng, maxLng)) return true;
     }
     return false;
   }

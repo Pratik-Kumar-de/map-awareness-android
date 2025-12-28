@@ -40,8 +40,8 @@ Route overview:
 - ${roadworks.length} total roadworks ($blockedCount blocked/closed)
 - ${warnings.length} active warnings
 
-Roadworks: ${roadworks.isEmpty ? 'None' : roadworks.take(5).map((r) => '${r.title} (${r.typeLabel})').join('; ')}
-Warnings: ${warnings.isEmpty ? 'None' : warnings.take(3).map((w) => '${w.title} - ${w.severity.label}').join('; ')}
+Roadworks: ${roadworks.isEmpty ? 'None' : roadworks.take(5).map((r) => '${r.title} (${r.typeLabel}) - ${r.subtitle}\nDetails: ${r.descriptionText.replaceAll('\n', ' ')}\nImpact: Length ${r.length ?? 'N/A'}, Speed ${r.speedLimit ?? 'N/A'}, Width ${r.maxWidth ?? 'N/A'}\nStatus: ${r.timeInfo}').join(';\n')}
+Warnings: ${warnings.isEmpty ? 'None' : warnings.take(3).map((w) => '${w.title} - ${w.severity.label} (${w.category.name})\nSource: ${w.source}\nDetails: ${w.description.replaceAll('\n', ' ')}\nTime: ${w.relativeTimeInfo}').join(';\n')}
 
 Focus on: key hazards, recommended precautions, and overall trip outlook. Be concise and practical.''';
       
@@ -91,7 +91,8 @@ Focus on: key hazards, recommended precautions, and overall trip outlook. Be con
       String floodInfo = 'Not available';
       if (floodData != null) {
         final discharge = floodData.riverDischarge;
-        floodInfo = 'River discharge: ${discharge?.toStringAsFixed(1)} m³/s';
+        final unit = floodData.unit ?? 'm³/s';
+        floodInfo = 'River discharge: ${discharge?.toStringAsFixed(1)} $unit';
       }
       
       final prompt = '''Generate a brief English safety summary (max 4 sentences) for $location$radiusInfo.
@@ -102,7 +103,7 @@ Current status:
 - Flood Risk: $floodInfo
 - Categories: ${warnings.map((w) => w.category.name).toSet().join(', ')}
 
-Active warnings: ${warnings.isEmpty ? 'None' : warnings.take(5).map((w) => '${w.title} (${w.severity.label})').join('; ')}
+Active warnings: ${warnings.isEmpty ? 'None' : warnings.take(5).map((w) => '${w.title} (${w.severity.label}) - ${w.source}\nCategory: ${w.category.name}\nDetails: ${w.description.replaceAll('\n', ' ')}\nTime: ${w.relativeTimeInfo}').join(';\n')}
 
 Focus on: immediate safety concerns including air quality health effects, flood risks, and practical advice for residents/visitors.''';
       
