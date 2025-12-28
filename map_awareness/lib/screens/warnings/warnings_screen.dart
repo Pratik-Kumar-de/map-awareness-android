@@ -1,48 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:map_awareness/components/loading/shimmer_loading.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:map_awareness/widgets/common/loading_shimmer.dart';
 import 'package:map_awareness/models/saved_location.dart';
 import 'package:map_awareness/models/warning_item.dart';
-import 'package:map_awareness/services/storage_service.dart';
-import 'package:map_awareness/services/location_service.dart';
-import 'package:map_awareness/APIs/map_api.dart';
-import 'package:map_awareness/APIs/dwd_api.dart';
-import 'package:map_awareness/APIs/nina_api.dart';
-import 'package:map_awareness/APIs/gemini_api.dart';
-import 'package:map_awareness/APIs/open_meteo_api.dart';
-import 'package:map_awareness/widgets/warning_card.dart';
-import 'package:map_awareness/widgets/ai_summary_card.dart';
-import 'package:map_awareness/widgets/empty_state.dart';
-import 'package:map_awareness/widgets/premium_inputs.dart';
-import 'package:map_awareness/widgets/app_navigation.dart';
-import 'package:map_awareness/widgets/app_header.dart';
-import 'package:map_awareness/utils/snackbar_utils.dart';
+import 'package:map_awareness/services/services.dart';
+import 'package:map_awareness/providers/app_providers.dart';
+import 'package:map_awareness/router/app_router.dart';
+import 'package:map_awareness/widgets/cards/warning_card.dart';
+import 'package:map_awareness/widgets/cards/ai_summary_card.dart';
+import 'package:map_awareness/widgets/common/empty_state.dart';
+import 'package:map_awareness/widgets/common/premium_card.dart';
+import 'package:map_awareness/widgets/buttons/quick_chip.dart';
+import 'package:map_awareness/widgets/inputs/location_input.dart';
+import 'package:map_awareness/widgets/feedback/stats_row.dart';
 import 'package:map_awareness/utils/app_theme.dart';
-import 'package:map_awareness/widgets/premium_card.dart';
+import 'package:map_awareness/utils/string_utils.dart';
 
-/// Warnings screen with premium UI
-class WarningsScreen extends StatefulWidget {
-  final void Function(LatLng center, double radiusKm, List<WarningItem> warnings)? onViewMap;
-
-  const WarningsScreen({super.key, this.onViewMap});
+class WarningsScreen extends ConsumerStatefulWidget {
+  const WarningsScreen({super.key});
 
   @override
-  State<WarningsScreen> createState() => _WarningsScreenState();
+  ConsumerState<WarningsScreen> createState() => _WarningsScreenState();
 }
 
-class _WarningsScreenState extends State<WarningsScreen> {
+class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticKeepAliveClientMixin {
   final _searchController = TextEditingController();
   final Set<WarningSeverity> _selectedSeverities = {...WarningSeverity.values};
 
   List<SavedLocation> _savedLocations = [];
-  List<WarningItem> _warnings = [];
-  List<WarningItem> _infoItems = [];
-  Map<String, dynamic>? _rawAirQuality, _rawFloodData;
-  String? _aiSummary;
-  double? _lat, _lng;
-  double _radiusKm = 20;
-  bool _isLoading = false, _isSaving = false, _isLoadingSummary = false, _showOnlyActive = false;
+  bool _isSaving = false;
+  bool _showOnlyActive = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -63,149 +54,83 @@ class _WarningsScreenState extends State<WarningsScreen> {
 
   Future<void> _useMyLocation() async {
     HapticFeedback.lightImpact();
-    setState(() => _isLoading = true);
-    final coords = await getCurrentUserLocation();
-    if (coords == null) {
-      if (mounted) context.showSnackBar('Location unavailable', color: AppTheme.warning);
-      setState(() => _isLoading = false);
+    final pos = await LocationService.getCurrentLocation();
+    if (pos == null) {
+      if (mounted) ToastService.warning(context, 'Location unavailable');
       return;
     }
-    final parts = coords.split(',');
-    _lat = double.tryParse(parts[0]);
-    _lng = double.tryParse(parts[1]);
-    _searchController.text = 'My Location ($coords)';
-    await _fetchWarnings();
+    final coordStr = '${pos.latitude},${pos.longitude}';
+    await ref.read(warningProvider.notifier).setLocation(
+      pos.latitude,
+      pos.longitude,
+      'My Location ($coordStr)',
+    );
+    _searchController.text = 'My Location ($coordStr)';
   }
 
   Future<void> _search() async {
     if (_searchController.text.isEmpty) {
-      context.showSnackBar('Enter a location first', color: AppTheme.warning);
+      ToastService.warning(context, 'Enter a location first');
       return;
     }
     HapticFeedback.mediumImpact();
-    setState(() => _isLoading = true);
-    final results = await geocode(_searchController.text, limit: 1);
-    if (results.isEmpty) {
-      if (mounted) context.showSnackBar('Location not found', color: AppTheme.error);
-      setState(() => _isLoading = false);
-      return;
-    }
-    _lat = results.first.lat;
-    _lng = results.first.lng;
-    _searchController.text = results.first.displayName;
-    await _fetchWarnings();
-  }
-
-  Future<void> _fetchWarnings() async {
-    final allWarnings = <WarningItem>[];
-    final allInfoItems = <WarningItem>[];
-
-    try {
-      allWarnings.addAll((await getAllDWDWarnings()).map(WarningItem.fromDWD));
-    } catch (_) {}
-
-    try {
-      final city = _searchController.text.split(',').first.trim();
-      allWarnings.addAll((await getNINAWarningsForCity(city)).map(WarningItem.fromNINA));
-    } catch (_) {}
-
-    Map<String, dynamic>? rawAq, rawFlood;
-    if (_lat != null && _lng != null) {
-      try {
-        final aq = await OpenMeteoApi.getAirQuality(_lat!, _lng!);
-        if (aq != null) {
-          rawAq = aq;
-          final item = WarningItem.fromOpenMeteoAirQuality(aq);
-          if (item != null) allInfoItems.add(item);
-        }
-      } catch (_) {}
-      try {
-        final flood = await OpenMeteoApi.getFloodData(_lat!, _lng!);
-        if (flood != null) {
-          rawFlood = flood;
-          final item = WarningItem.fromOpenMeteoFlood(flood);
-          if (item != null) allInfoItems.add(item);
-        }
-      } catch (_) {}
-    }
-
-    HapticFeedback.heavyImpact();
-    if (mounted) {
-      setState(() {
-        _warnings = allWarnings;
-        _infoItems = allInfoItems;
-        _rawAirQuality = rawAq;
-        _rawFloodData = rawFlood;
-        _isLoading = false;
-        _isLoadingSummary = true;
-      });
-      _generateSummary(allWarnings);
-    }
-  }
-
-  Future<void> _generateSummary(List<WarningItem> warnings) async {
-    try {
-      final summary = await generateLocationSummary(
-        _searchController.text.split(',').first.trim(),
-        warnings,
-        radiusKm: _radiusKm,
-        airQuality: _rawAirQuality,
-        floodData: _rawFloodData,
-      );
-      if (mounted) setState(() { _aiSummary = summary; _isLoadingSummary = false; });
-    } catch (_) {
-      if (mounted) setState(() => _isLoadingSummary = false);
+    final success = await ref.read(warningProvider.notifier).search(_searchController.text);
+    if (!success && mounted) {
+      ToastService.error(context, 'Location not found');
+    } else {
+      final state = ref.read(warningProvider);
+      _searchController.text = state.locationText ?? _searchController.text;
+      HapticFeedback.heavyImpact();
     }
   }
 
   Future<void> _saveLocation() async {
+    final state = ref.read(warningProvider);
     if (_searchController.text.isEmpty) {
-      context.showSnackBar('Enter a location first', color: AppTheme.warning);
+      ToastService.warning(context, 'Enter a location first');
       return;
     }
     HapticFeedback.mediumImpact();
     setState(() => _isSaving = true);
     final location = SavedLocation(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _searchController.text.split(',').first,
+      name: _searchController.text.cityName,
       locationText: _searchController.text,
-      radiusKm: _radiusKm,
+      radiusKm: state.radiusKm,
       createdAt: DateTime.now(),
-      latitude: _lat,
-      longitude: _lng,
+      latitude: state.lat,
+      longitude: state.lng,
     );
     final success = await StorageService.saveLocation(location);
     await _loadSavedLocations();
     setState(() => _isSaving = false);
-    if (mounted) context.showSnackBar(success ? 'Saved' : 'Already saved', color: success ? AppTheme.success : AppTheme.warning);
+    if (mounted) ToastService.success(context, success ? 'Saved' : 'Already saved');
   }
 
   Future<void> _deleteLocation(SavedLocation loc) async {
     HapticFeedback.heavyImpact();
     await StorageService.deleteLocation(loc.id);
     await _loadSavedLocations();
-    if (mounted) context.showSnackBar('${loc.name} removed', color: AppTheme.error);
+    if (mounted) ToastService.error(context, '${loc.name} removed');
   }
 
   void _loadLocation(SavedLocation loc) {
     HapticFeedback.selectionClick();
-    setState(() {
-      _searchController.text = loc.locationText;
-      _radiusKm = loc.radiusKm;
-      _lat = loc.latitude;
-      _lng = loc.longitude;
-    });
-    _fetchWarnings();
+    _searchController.text = loc.locationText;
+    ref.read(warningProvider.notifier).setRadius(loc.radiusKm);
+    if (loc.latitude != null && loc.longitude != null) {
+      ref.read(warningProvider.notifier).setLocation(loc.latitude!, loc.longitude!, loc.locationText);
+    }
   }
 
-  List<WarningItem> get _filtered {
-    if (_lat == null || _lng == null) return [];
-    return _warnings.where((w) {
+  List<WarningItem> _filterWarnings(WarningState state) {
+    if (!state.hasLocation) return [];
+    return state.warnings.where((w) {
       if (_showOnlyActive && !w.isActive) return false;
       if (!_selectedSeverities.contains(w.severity)) return false;
       if (w.latitude != null && w.longitude != null) {
-        final dist = distanceInKm(_lat!, _lng!, w.latitude!, w.longitude!);
-        if (dist > _radiusKm) return false;
+        final dist = LocationService.distanceInKm(state.lat!, state.lng!, w.latitude!, w.longitude!);
+        if (dist > state.radiusKm) return false;
       }
       return true;
     }).toList();
@@ -213,32 +138,31 @@ class _WarningsScreenState extends State<WarningsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
+    super.build(context);
+    final state = ref.watch(warningProvider);
+    final filtered = _filterWarnings(state);
 
     return RefreshIndicator(
-      onRefresh: _fetchWarnings,
+      onRefresh: () => ref.read(warningProvider.notifier).refresh(),
       color: AppTheme.primary,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         children: [
-          // Search field
-          PremiumSearchField(
+          SearchField(
             controller: _searchController,
             hintText: 'Search city or location...',
             onSearch: _search,
             onMyLocation: _useMyLocation,
             onSave: _saveLocation,
-            isLoading: _isLoading,
+            isLoading: state.isLoading,
             isSaving: _isSaving,
           ),
           const SizedBox(height: 20),
 
-          // Radius slider
-          _buildRadiusSlider(),
+          _buildRadiusSlider(state),
           const SizedBox(height: 16),
 
-          // Saved locations
           if (_savedLocations.isNotEmpty) ...[
             SizedBox(
               height: 44,
@@ -246,93 +170,93 @@ class _WarningsScreenState extends State<WarningsScreen> {
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 itemCount: _savedLocations.length,
-                separatorBuilder: (c, i) => const SizedBox(width: 10),
+                separatorBuilder: (context, index) => const SizedBox(width: 10),
                 itemBuilder: (_, i) {
                   final loc = _savedLocations[i];
-                  return QuickChip(
-                    label: loc.name,
-                    icon: Icons.place_rounded,
-                    onTap: () => _loadLocation(loc),
-                    onLongPress: () => _deleteLocation(loc),
-                  );
+                  return QuickChip(label: loc.name, icon: Icons.place_rounded, onTap: () => _loadLocation(loc), onLongPress: () => _deleteLocation(loc));
                 },
               ),
             ),
             const SizedBox(height: 20),
           ],
 
-          // Loading or content
-          if (_isLoading)
-            const ShimmerList(count: 4)
-          else ...[
-            // AI Summary
-            AiSummaryCard(
-              summary: _aiSummary,
-              isLoading: _isLoadingSummary,
-              title: _searchController.text.isNotEmpty ? _searchController.text.split(',').first : 'Location Summary',
-              onRefresh: () {
-                HapticFeedback.selectionClick();
-                setState(() => _isLoadingSummary = true);
-                _generateSummary(_warnings);
-              },
-            ),
-            const SizedBox(height: 20),
-
-            // Stats
-            if (_warnings.isNotEmpty)
-              StatsRow(
-                items: [
-                  StatItem(label: 'Total', value: '${_warnings.length}'),
-                  StatItem(label: 'Active', value: '${_warnings.where((w) => w.isActive).length}', color: AppTheme.success),
-                  StatItem(label: 'In Range', value: '${filtered.length}', color: AppTheme.primary),
+          if (state.isLoading)
+             const LoadingShimmer(
+               child: Column(
+                children: [
+                   SizedBox(height: 120, child: Card(color: Colors.white)),
+                   SizedBox(height: 20),
+                   SizedBox(height: 80, child: Card(color: Colors.white)),
+                   SizedBox(height: 20),
+                   SizedBox(height: 200, child: Card(color: Colors.white)),
                 ],
-              ),
-            if (_warnings.isNotEmpty) const SizedBox(height: 20),
-
-            // Filters + Map button
-            _buildFiltersRow(filtered),
-            const SizedBox(height: 20),
-
-            // Info items
-            if (_infoItems.isNotEmpty) ...[
-              SizedBox(
-                height: 100,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: _infoItems.length,
-                  separatorBuilder: (c, i) => const SizedBox(width: 12),
-                  itemBuilder: (_, i) => _buildInfoCard(_infoItems[i]),
+               )
+             )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AiSummaryCard(
+                  summary: state.aiSummary,
+                  isLoading: state.isSummaryLoading,
+                  title: state.locationText?.cityName ?? 'Location Summary',
+                  onRefresh: () {
+                    HapticFeedback.selectionClick();
+                    ref.read(warningProvider.notifier).refreshSummary();
+                  },
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 20),
 
-            // Warnings list
-            if (_warnings.isEmpty)
-              const EmptyStateWidget(
-                icon: Icons.search_rounded,
-                title: 'Search a location',
-                subtitle: 'Enter a city to see nearby warnings',
-              )
-            else if (filtered.isEmpty)
-              const EmptyStateWidget(
-                icon: Icons.filter_alt_off_rounded,
-                title: 'No matches',
-                subtitle: 'Adjust your filters or radius',
-              )
-            else
-              ...filtered.map((w) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: WarningCard(warning: w),
-              )),
-          ],
+                if (state.warnings.isNotEmpty)
+                  StatsRow(items: [
+                    StatItem(label: 'Total', value: '${state.warnings.length}'),
+                    StatItem(label: 'Active', value: '${state.warnings.where((w) => w.isActive).length}', color: AppTheme.success),
+                    StatItem(label: 'In Range', value: '${filtered.length}', color: AppTheme.primary),
+                  ]),
+                if (state.warnings.isNotEmpty) const SizedBox(height: 20),
+
+                _buildFiltersRow(state, filtered),
+                const SizedBox(height: 20),
+
+                if (state.infoItems.isNotEmpty) ...[
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      // responsive: single column if narrow, row if wide
+                      final useRow = constraints.maxWidth > 500 && state.infoItems.length > 1;
+                      if (useRow) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: state.infoItems.map((item) => Expanded(child: Padding(
+                            padding: EdgeInsets.only(right: item == state.infoItems.last ? 0 : 12),
+                            child: _buildInfoCard(item),
+                          ))).toList(),
+                        );
+                      }
+                      return Column(
+                        children: state.infoItems.map((item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildInfoCard(item),
+                        )).toList(),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                ],
+
+                if (state.warnings.isEmpty)
+                  const EmptyStateWidget(icon: Icons.search_rounded, title: 'Search a location', subtitle: 'Enter a city to see nearby warnings')
+                else if (filtered.isEmpty)
+                  const EmptyStateWidget(icon: Icons.filter_alt_off_rounded, title: 'No matches', subtitle: 'Adjust your filters or radius')
+                else
+                  ...filtered.map((w) => Padding(padding: const EdgeInsets.only(bottom: 12), child: WarningCard(warning: w))),
+              ],
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildRadiusSlider() {
+  Widget _buildRadiusSlider(WarningState state) {
     return PremiumCard(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       child: Column(
@@ -340,39 +264,19 @@ class _WarningsScreenState extends State<WarningsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.radar_rounded, color: AppTheme.primary, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Search Radius',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.radar_rounded, color: AppTheme.primary, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Text('Search Radius', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+              ]),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${_radiusKm.toInt()} km',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
+                decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(20)),
+                child: Text('${state.radiusKm.toInt()} km', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
               ),
             ],
           ),
@@ -386,13 +290,10 @@ class _WarningsScreenState extends State<WarningsScreen> {
               trackHeight: 6,
             ),
             child: Slider(
-              min: 1,
-              max: 100,
-              divisions: 99,
-              value: _radiusKm,
+              min: 1, max: 100, divisions: 99, value: state.radiusKm,
               onChanged: (v) {
                 HapticFeedback.selectionClick();
-                setState(() => _radiusKm = v);
+                ref.read(warningProvider.notifier).setRadius(v);
               },
             ),
           ),
@@ -401,7 +302,7 @@ class _WarningsScreenState extends State<WarningsScreen> {
     );
   }
 
-  Widget _buildFiltersRow(List<WarningItem> filtered) {
+  Widget _buildFiltersRow(WarningState state, List<WarningItem> filtered) {
     return Row(
       children: [
         Expanded(
@@ -427,11 +328,7 @@ class _WarningsScreenState extends State<WarningsScreen> {
                     isSelected: _selectedSeverities.contains(s),
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      setState(() {
-                        _selectedSeverities.contains(s)
-                            ? _selectedSeverities.remove(s)
-                            : _selectedSeverities.add(s);
-                      });
+                      setState(() => _selectedSeverities.contains(s) ? _selectedSeverities.remove(s) : _selectedSeverities.add(s));
                     },
                   ),
                 )),
@@ -443,32 +340,20 @@ class _WarningsScreenState extends State<WarningsScreen> {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: _lat != null && _lng != null
-                ? () {
-                    HapticFeedback.mediumImpact();
-                    widget.onViewMap?.call(LatLng(_lat!, _lng!), _radiusKm, _warnings);
-                  }
-                : null,
+            onTap: state.hasLocation ? () {
+              HapticFeedback.mediumImpact();
+              AppRouter.goToMap();
+            } : null,
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                gradient: _lat != null ? AppTheme.primaryGradient : null,
-                color: _lat == null ? AppTheme.surfaceContainerHigh : null,
+                gradient: state.hasLocation ? AppTheme.primaryGradient : null,
+                color: !state.hasLocation ? AppTheme.surfaceContainerHigh : null,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: _lat != null ? [
-                  BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ] : null,
+                boxShadow: state.hasLocation ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))] : null,
               ),
-              child: Icon(
-                Icons.map_rounded,
-                color: _lat != null ? Colors.white : AppTheme.textMuted,
-                size: 22,
-              ),
+              child: Icon(Icons.map_rounded, color: state.hasLocation ? Colors.white : AppTheme.textMuted, size: 22),
             ),
           ),
         ),
@@ -478,58 +363,36 @@ class _WarningsScreenState extends State<WarningsScreen> {
 
   Widget _buildInfoCard(WarningItem item) {
     final isFlood = item.category == WarningCategory.flood;
-    final color = isFlood ? Colors.blue : Colors.green;
-
+    final color = isFlood ? AppTheme.info : AppTheme.success;
+    
     return Container(
-      width: 200,
+      constraints: const BoxConstraints(minHeight: 100),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        boxShadow: AppTheme.cardShadow,
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  isFlood ? Icons.water_rounded : Icons.eco_rounded,
-                  size: 16,
-                  color: color,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  item.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(isFlood ? Icons.water_rounded : Icons.eco_rounded, size: 24, color: color),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              item.description,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(item.title, style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 15)),
+                const SizedBox(height: 4),
+                Text(item.description, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary, height: 1.4), maxLines: 3, overflow: TextOverflow.ellipsis),
+              ],
             ),
           ),
         ],

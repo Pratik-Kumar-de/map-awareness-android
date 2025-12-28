@@ -1,54 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:map_awareness/components/loading/shimmer_loading.dart';
-import 'package:map_awareness/models/routing_data.dart';
+import 'package:map_awareness/widgets/common/loading_shimmer.dart';
 import 'package:map_awareness/models/saved_route.dart';
-import 'package:map_awareness/models/warning_item.dart';
-import 'package:map_awareness/services/storage_service.dart';
-import 'package:map_awareness/services/location_service.dart';
-import 'package:map_awareness/APIs/map_api.dart';
-import 'package:map_awareness/APIs/nina_api.dart';
-import 'package:map_awareness/APIs/dwd_api.dart';
-import 'package:map_awareness/APIs/gemini_api.dart';
-import 'package:map_awareness/APIs/autobahn_api.dart';
-import 'package:map_awareness/widgets/roadwork_tile.dart';
-import 'package:map_awareness/widgets/warning_card.dart';
-import 'package:map_awareness/widgets/ai_summary_card.dart';
-import 'package:map_awareness/widgets/empty_state.dart';
-import 'package:map_awareness/widgets/premium_inputs.dart';
-import 'package:map_awareness/widgets/app_navigation.dart';
-import 'package:map_awareness/utils/snackbar_utils.dart';
+import 'package:map_awareness/services/services.dart';
+import 'package:map_awareness/providers/app_providers.dart';
+import 'package:map_awareness/router/app_router.dart';
+
+import 'package:map_awareness/widgets/cards/roadwork_tile.dart';
+import 'package:map_awareness/widgets/cards/warning_card.dart';
+import 'package:map_awareness/widgets/cards/ai_summary_card.dart';
+import 'package:map_awareness/widgets/common/empty_state.dart';
+import 'package:map_awareness/widgets/common/premium_card.dart';
+import 'package:map_awareness/widgets/buttons/gradient_button.dart';
+import 'package:map_awareness/widgets/buttons/secondary_button.dart';
+import 'package:map_awareness/widgets/inputs/location_input.dart';
 import 'package:map_awareness/utils/app_theme.dart';
-import 'package:map_awareness/widgets/premium_card.dart';
 
-/// Routes screen with premium UI
-class RoutesScreen extends StatefulWidget {
-  final void Function(List<PointLatLng> polyline, List<LatLng> roadworkPoints, [List<List<RoutingWidgetData>>? roadworks])? onRouteCalculated;
-  final void Function(int tabIndex)? onTabRequested;
-
-  const RoutesScreen({super.key, this.onRouteCalculated, this.onTabRequested});
+class RoutesScreen extends ConsumerStatefulWidget {
+  const RoutesScreen({super.key});
 
   @override
-  State<RoutesScreen> createState() => _RoutesScreenState();
+  ConsumerState<RoutesScreen> createState() => _RoutesScreenState();
 }
 
-class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderStateMixin {
+class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final TabController _tabController;
   final _startController = TextEditingController(text: 'Bremen');
   final _endController = TextEditingController(text: 'Hamburg');
   final _nameController = TextEditingController();
-
+  
   List<SavedRoute> _savedRoutes = [];
-  List<List<RoutingWidgetData>> _roadworks = [];
-  List<AutobahnClass> _autobahnList = [];
-  List<PointLatLng> _polylinePoints = [];
-  List<WarningItem> _routeWarnings = [];
-  String? _startCoords, _endCoords, _startName, _endName;
-  String? _editingId, _aiSummary;
-  bool _isLoading = false, _isSaving = false, _isLoadingSummary = false, _gettingLocation = false;
+  String? _editingId;
+  bool _isSaving = false;
+  bool _gettingLocation = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -71,117 +60,43 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
     setState(() => _savedRoutes = routes);
   }
 
-  Future<String?> _geocode(String address) async {
-    if (RegExp(r'^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$').hasMatch(address.trim())) {
-      return address.trim().replaceAll(' ', '');
-    }
-    final results = await geocode(address, limit: 1);
-    return results.isNotEmpty ? results.first.coordinates : null;
-  }
-
-  Future<String> _resolveName(String input) async {
-    final match = RegExp(r'^(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)$').firstMatch(input.trim());
-    if (match != null) {
-      final lat = double.tryParse(match.group(1)!);
-      final lng = double.tryParse(match.group(3)!);
-      if (lat != null && lng != null) {
-        return await reverseGeocode(lat, lng) ?? input;
-      }
-    }
-    return input;
-  }
-
   Future<void> _useMyLocation() async {
     setState(() => _gettingLocation = true);
     HapticFeedback.lightImpact();
-    final coords = await getCurrentUserLocation();
-    if (coords == null) {
-      if (mounted) context.showSnackBar('Location unavailable', color: AppTheme.warning);
+    final pos = await LocationService.getCurrentLocation();
+    if (pos == null) {
+      if (mounted) ToastService.warning(context, 'Location unavailable');
       setState(() => _gettingLocation = false);
       return;
     }
-    final parts = coords.split(',');
-    final name = await reverseGeocode(double.parse(parts[0]), double.parse(parts[1]));
-    if (mounted) setState(() => _startController.text = name ?? coords);
+    final name = await GeocodingService.getPlaceName(pos.latitude, pos.longitude) ?? '${pos.latitude},${pos.longitude}';
+    if (mounted) setState(() => _startController.text = name);
     setState(() => _gettingLocation = false);
   }
 
   Future<void> _calculateRoute() async {
     if (_startController.text.isEmpty || _endController.text.isEmpty) {
-      context.showSnackBar('Enter start and destination', color: AppTheme.warning);
+      ToastService.warning(context, 'Enter start and destination');
       return;
     }
 
     HapticFeedback.mediumImpact();
-    setState(() { _isLoading = true; _aiSummary = null; });
+    final success = await ref.read(routeProvider.notifier).calculate(
+      _startController.text,
+      _endController.text,
+    );
 
-    try {
-      final startCoords = await _geocode(_startController.text);
-      final endCoords = await _geocode(_endController.text);
-      if (startCoords == null || endCoords == null) {
-        if (mounted) context.showSnackBar('Location not found', color: AppTheme.error);
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      final routeResult = await routingWithPolyline(startCoords, endCoords);
-      final roadworks = await getRoutingWidgetData(startCoords, endCoords);
-
-      final warnings = <WarningItem>[];
-      try {
-        warnings.addAll((await getAllDWDWarnings()).map(WarningItem.fromDWD));
-        final startCity = _startController.text.split(',').first.trim();
-        final endCity = _endController.text.split(',').first.trim();
-        warnings.addAll((await getNINAWarningsForCity(startCity)).map(WarningItem.fromNINA));
-        if (startCity.toLowerCase() != endCity.toLowerCase()) {
-          warnings.addAll((await getNINAWarningsForCity(endCity)).map(WarningItem.fromNINA));
-        }
-        final seen = <String>{};
-        warnings.removeWhere((w) => !seen.add(w.title));
-      } catch (_) {}
-
-      final startName = await _resolveName(_startController.text);
-      final endName = await _resolveName(_endController.text);
-
+    if (!success && mounted) {
+      ToastService.error(context, 'Location not found');
+    } else {
       HapticFeedback.heavyImpact();
-      setState(() {
-        _autobahnList = routeResult.autobahnList;
-        _polylinePoints = routeResult.polylinePoints;
-        _roadworks = roadworks;
-        _routeWarnings = warnings..sort();
-        _startCoords = startCoords;
-        _endCoords = endCoords;
-        _startName = startName;
-        _endName = endName;
-        _isLoading = false;
-        _isLoadingSummary = true;
-      });
-
-      final roadworkLatLngs = roadworks.expand((l) => l)
-          .where((r) => r.latitude != null && r.longitude != null)
-          .map((r) => LatLng(r.latitude!, r.longitude!))
-          .toList();
-      widget.onRouteCalculated?.call(routeResult.polylinePoints, roadworkLatLngs, roadworks);
-
-      _generateSummary([...roadworks[0], ...roadworks[1], ...roadworks[2]], warnings);
-    } catch (e) {
-      if (mounted) context.showSnackBar('Error: $e', color: AppTheme.error);
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _generateSummary(List<RoutingWidgetData> roadworks, List<WarningItem> warnings) async {
-    try {
-      final summary = await generateRouteSummary(roadworks, warnings, _startName ?? '', _endName ?? '');
-      if (mounted) setState(() { _aiSummary = summary; _isLoadingSummary = false; });
-    } catch (_) {
-      if (mounted) setState(() => _isLoadingSummary = false);
     }
   }
 
   Future<void> _saveRoute() async {
-    if (_autobahnList.isEmpty) {
-      context.showSnackBar('Calculate a route first', color: AppTheme.warning);
+    final state = ref.read(routeProvider);
+    if (!state.hasRoute) {
+      ToastService.warning(context, 'Calculate a route first');
       return;
     }
     HapticFeedback.mediumImpact();
@@ -189,12 +104,12 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
 
     final route = SavedRoute(
       id: _editingId ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _nameController.text.isNotEmpty ? _nameController.text : '$_startName → $_endName',
-      startCoordinate: _startCoords!,
-      endCoordinate: _endCoords!,
-      startLocation: _startName ?? _startController.text,
-      endLocation: _endName ?? _endController.text,
-      autobahnSegments: autobahnClassToData(_autobahnList),
+      name: _nameController.text.isNotEmpty ? _nameController.text : '${state.startName} → ${state.endName}',
+      startCoordinate: state.startCoords!,
+      endCoordinate: state.endCoords!,
+      startLocation: state.startName ?? _startController.text,
+      endLocation: state.endName ?? _endController.text,
+      autobahnSegments: state.autobahns,
       createdAt: DateTime.now(),
     );
 
@@ -203,7 +118,7 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
     _nameController.clear();
     _editingId = null;
     setState(() => _isSaving = false);
-    if (mounted) context.showSnackBar('Route saved', color: AppTheme.success);
+    if (mounted) ToastService.success(context, 'Route saved');
   }
 
   Future<void> _loadRoute(SavedRoute route) async {
@@ -212,21 +127,24 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
     _endController.text = route.endLocation;
     _nameController.text = route.name;
     await _calculateRoute();
-    if (mounted) context.showSnackBar('Loaded "${route.name}"');
+    if (mounted) ToastService.info(context, 'Loaded "${route.name}"');
   }
 
   Future<void> _deleteRoute(SavedRoute route) async {
     HapticFeedback.heavyImpact();
     await StorageService.deleteRoute(route.id);
     await _loadSavedRoutes();
-    if (mounted) context.showSnackBar('Deleted', color: AppTheme.error);
+    if (mounted) ToastService.error(context, 'Deleted');
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    final state = ref.watch(routeProvider);
+
     return Column(
       children: [
-        // Tab bar with premium styling
+        // Tab bar
         Container(
           margin: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           decoration: BoxDecoration(
@@ -246,51 +164,31 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
             unselectedLabelColor: AppTheme.textMuted,
             labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
             tabs: const [
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.directions_rounded, size: 20),
-                    SizedBox(width: 8),
-                    Text('Plan Route'),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.bookmarks_rounded, size: 20),
-                    SizedBox(width: 8),
-                    Text('Saved'),
-                  ],
-                ),
-              ),
+              Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.directions_rounded, size: 20), SizedBox(width: 8), Text('Plan Route')])),
+              Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.bookmarks_rounded, size: 20), SizedBox(width: 8), Text('Saved')])),
             ],
           ),
         ),
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [_buildPlanTab(), _buildSavedTab()],
+            children: [_buildPlanTab(state), _buildSavedTab()],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildPlanTab() {
+  Widget _buildPlanTab(RouteState state) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
       physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Editing banner
           if (_editingId != null) _buildEditingBanner(),
 
-          // Location input
-          PremiumLocationInput(
+          LocationInput(
             startController: _startController,
             endController: _endController,
             isGettingLocation: _gettingLocation,
@@ -331,8 +229,8 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
                 child: GradientButton(
                   label: 'Calculate Route',
                   icon: Icons.directions_rounded,
-                  onPressed: _isLoading ? null : _calculateRoute,
-                  isLoading: _isLoading,
+                  onPressed: state.isLoading ? null : _calculateRoute,
+                  isLoading: state.isLoading,
                 ),
               ),
               const SizedBox(width: 12),
@@ -340,7 +238,7 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
                 child: SecondaryButton(
                   label: _editingId != null ? 'Update' : 'Save',
                   icon: _editingId != null ? Icons.check_rounded : Icons.bookmark_add_rounded,
-                  onPressed: _isLoading || _isSaving || _autobahnList.isEmpty ? null : _saveRoute,
+                  onPressed: state.isLoading || _isSaving || !state.hasRoute ? null : _saveRoute,
                   isLoading: _isSaving,
                 ),
               ),
@@ -349,40 +247,49 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
           const SizedBox(height: 24),
 
           // Results
-          if (_isLoading)
-            const ShimmerList(count: 3)
-          else ...[
-            if (_roadworks.isNotEmpty) ...[
-              RoadworksSummary(roadworks: _roadworks),
-              const SizedBox(height: 16),
-            ],
-            if (_routeWarnings.isNotEmpty)
-              _buildWarningsSection(),
-            if (_roadworks.isNotEmpty || _routeWarnings.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              AiSummaryCard(
-                summary: _aiSummary,
-                isLoading: _isLoadingSummary,
-                title: _startName != null && _endName != null ? '$_startName → $_endName' : 'Summary',
-                onRefresh: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _isLoadingSummary = true);
-                  _generateSummary([..._roadworks[0], ..._roadworks[1], ..._roadworks[2]], _routeWarnings);
-                },
-              ),
-            ],
-            if (_polylinePoints.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              GradientButton(
-                label: 'View on Map',
-                icon: Icons.map_rounded,
-                onPressed: () => widget.onTabRequested?.call(2),
-                gradient: LinearGradient(
-                  colors: [AppTheme.accent, AppTheme.accentLight],
-                ),
-              ),
-            ],
-          ],
+          if (state.isLoading)
+             const LoadingShimmer(
+               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                   SizedBox(height: 100, child: Card(color: Colors.white)),
+                   SizedBox(height: 16),
+                   SizedBox(height: 150, child: Card(color: Colors.white)),
+                ],
+               )
+             )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (state.roadworks.isNotEmpty) ...[
+                  RoadworksSummary(roadworks: state.roadworks),
+                  const SizedBox(height: 16),
+                ],
+                if (state.warnings.isNotEmpty) _buildWarningsSection(state),
+                if (state.roadworks.isNotEmpty || state.warnings.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  AiSummaryCard(
+                    summary: state.aiSummary,
+                    isLoading: state.isSummaryLoading,
+                    title: state.startName != null && state.endName != null ? '${state.startName} → ${state.endName}' : 'Summary',
+                    onRefresh: () {
+                      HapticFeedback.selectionClick();
+                      ref.read(routeProvider.notifier).refreshSummary();
+                    },
+                  ),
+                ],
+                if (state.hasRoute) ...[
+                  const SizedBox(height: 16),
+                  GradientButton(
+                    label: 'View on Map',
+                    icon: Icons.map_rounded,
+                    onPressed: () => AppRouter.goToMap(),
+                    gradient: LinearGradient(colors: [AppTheme.accent, AppTheme.accentLight]),
+                  ),
+                ],
+              ],
+            ),
         ],
       ),
     );
@@ -393,12 +300,7 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
       padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.accent.withValues(alpha: 0.15),
-            AppTheme.accent.withValues(alpha: 0.05),
-          ],
-        ),
+        gradient: LinearGradient(colors: [AppTheme.accent.withValues(alpha: 0.15), AppTheme.accent.withValues(alpha: 0.05)]),
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
       ),
@@ -406,22 +308,11 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.accent,
-              borderRadius: BorderRadius.circular(8),
-            ),
+            decoration: BoxDecoration(color: AppTheme.accent, borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.edit_rounded, size: 16, color: Colors.white),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Editing route',
-              style: TextStyle(
-                color: AppTheme.accent.withValues(alpha: 0.9),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          Expanded(child: Text('Editing route', style: TextStyle(color: AppTheme.accent.withValues(alpha: 0.9), fontWeight: FontWeight.w600))),
           TextButton(
             onPressed: () {
               HapticFeedback.selectionClick();
@@ -434,26 +325,23 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildWarningsSection() {
-    return PremiumCard(
-      padding: EdgeInsets.zero,
-      child: ExpansionTile(
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppTheme.warning.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(10),
+  Widget _buildWarningsSection(RouteState state) {
+    return Semantics(
+      excludeSemantics: true,
+      child: PremiumCard(
+        padding: EdgeInsets.zero,
+        child: ExpansionTile(
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: AppTheme.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 20),
           ),
-          child: Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 20),
+          title: Text('${state.warnings.length} Warnings', style: const TextStyle(fontWeight: FontWeight.w600)),
+          children: state.warnings.map((w) => Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: WarningCard(warning: w),
+          )).toList(),
         ),
-        title: Text(
-          '${_routeWarnings.length} Warnings',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        children: _routeWarnings.map((w) => Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-          child: WarningCard(warning: w),
-        )).toList(),
       ),
     );
   }
@@ -467,95 +355,81 @@ class _RoutesScreenState extends State<RoutesScreen> with SingleTickerProviderSt
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-      physics: const BouncingScrollPhysics(),
-      itemCount: _savedRoutes.length,
-      itemBuilder: (context, i) {
-        final route = _savedRoutes[i];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Slidable(
-            endActionPane: ActionPane(
-              motion: const DrawerMotion(),
-              extentRatio: 0.5,
-              children: [
-                SlidableAction(
-                  onPressed: (_) {
-                    HapticFeedback.selectionClick();
-                    setState(() {
-                      _startController.text = route.startLocation;
-                      _endController.text = route.endLocation;
-                      _nameController.text = route.name;
-                      _editingId = route.id;
-                    });
-                    _tabController.animateTo(0);
-                  },
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
-                  icon: Icons.edit_rounded,
-                  label: 'Edit',
-                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
-                ),
-                SlidableAction(
-                  onPressed: (_) => _deleteRoute(route),
-                  backgroundColor: AppTheme.error,
-                  foregroundColor: Colors.white,
-                  icon: Icons.delete_rounded,
-                  label: 'Delete',
-                  borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
-                ),
-              ],
-            ),
-            child: PremiumCard(
-              onTap: () {
-                _loadRoute(route);
-                _tabController.animateTo(0);
-              },
-              padding: const EdgeInsets.all(16),
-              child: Row(
+    return RefreshIndicator(
+      onRefresh: _loadSavedRoutes,
+      color: AppTheme.primary,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        itemCount: _savedRoutes.length,
+        itemBuilder: (context, i) {
+          final route = _savedRoutes[i];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Slidable(
+              endActionPane: ActionPane(
+                motion: const DrawerMotion(),
+                extentRatio: 0.5,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.route_rounded, color: Colors.white, size: 22),
+                  SlidableAction(
+                    onPressed: (_) {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _startController.text = route.startLocation;
+                        _endController.text = route.endLocation;
+                        _nameController.text = route.name;
+                        _editingId = route.id;
+                      });
+                      _tabController.animateTo(0);
+                    },
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    icon: Icons.edit_rounded,
+                    label: 'Edit',
+                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          route.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${route.autobahnSegments.length} segments',
-                          style: TextStyle(
-                            color: AppTheme.textMuted,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppTheme.textMuted,
+                  SlidableAction(
+                    onPressed: (_) => _deleteRoute(route),
+                    backgroundColor: AppTheme.error,
+                    foregroundColor: Colors.white,
+                    icon: Icons.delete_rounded,
+                    label: 'Delete',
+                    borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
                   ),
                 ],
               ),
+              child: PremiumCard(
+                onTap: () {
+                  _loadRoute(route);
+                  _tabController.animateTo(0);
+                },
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.route_rounded, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(route.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                          const SizedBox(height: 4),
+                          Text('${route.autobahnSegments.length} segments', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+                  ],
+                ),
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

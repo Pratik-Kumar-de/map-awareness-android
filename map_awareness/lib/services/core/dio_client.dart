@@ -1,0 +1,46 @@
+import 'package:dio/dio.dart';
+import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
+
+/// Centralized Dio HTTP client with caching
+class DioClient {
+  static final Dio instance = _createDio();
+  static late final CacheOptions cacheOptions;
+
+  static Dio _createDio() {
+    final dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 15),
+    ));
+
+    // Memory cache
+    cacheOptions = CacheOptions(
+      store: MemCacheStore(),
+      policy: CachePolicy.request,
+      hitCacheOnErrorExcept: [401, 403],
+    );
+    dio.interceptors.add(DioCacheInterceptor(options: cacheOptions));
+
+    return dio;
+  }
+
+  /// Get with short cache (15 min) for frequently changing data
+  static Options shortCache() => cacheOptions
+      .copyWith(
+        policy: CachePolicy.forceCache,
+        maxStale: const Nullable(Duration(minutes: 15)),
+      )
+      .toOptions();
+
+  /// Get with long cache (24h) for stable data
+  static Options longCache() => cacheOptions
+      .copyWith(
+        policy: CachePolicy.forceCache,
+        maxStale: const Nullable(Duration(hours: 24)),
+      )
+      .toOptions();
+
+  /// Force refresh, bypass cache
+  static Options noCache() => cacheOptions
+      .copyWith(policy: CachePolicy.refresh)
+      .toOptions();
+}

@@ -1,4 +1,4 @@
-/// ARS (Amtlicher Regionalschlüssel) lookup for German cities
+/// ARS (Official Regional Key) lookup for German cities
 /// Extended coverage with major cities and their regions
 const Map<String, String> _arsLookup = {
   // City States
@@ -7,16 +7,14 @@ const Map<String, String> _arsLookup = {
   'bremen': '04011000',
   'bremerhaven': '04012000',
   
-  // Bavaria (Bayern)
+  // Bavaria
   'munich': '09162000',
-  'münchen': '09162000',
   'nuremberg': '09564000',
-  'nürnberg': '09564000',
   'augsburg': '09761000',
   'regensburg': '09362000',
   'ingolstadt': '09161000',
-  'würzburg': '09663000',
-  'fürth': '09563000',
+  'wurzburg': '09663000',
+  'furth': '09563000',
   'erlangen': '09562000',
   'bamberg': '09461000',
   'bayreuth': '09462000',
@@ -37,12 +35,11 @@ const Map<String, String> _arsLookup = {
   'esslingen': '08116000',
   'ludwigsburg': '08118000',
   'konstanz': '08335000',
-  'tübingen': '08416000',
+  'tuebingen': '08416000',
   
   // North Rhine-Westphalia (NRW)
   'cologne': '05315000',
-  'köln': '05315000',
-  'düsseldorf': '05111000',
+  'duesseldorf': '05111000',
   'dortmund': '05913000',
   'essen': '05113000',
   'duisburg': '05112000',
@@ -50,61 +47,60 @@ const Map<String, String> _arsLookup = {
   'wuppertal': '05124000',
   'bielefeld': '05711000',
   'bonn': '05314000',
-  'münster': '05515000',
+  'muenster': '05515000',
   'aachen': '05334000',
   'gelsenkirchen': '05513000',
-  'mönchengladbach': '05116000',
+  'moenchengladbach': '05116000',
   'krefeld': '05114000',
   'oberhausen': '05119000',
   'hagen': '05914000',
   'hamm': '05915000',
-  'mülheim': '05117000',
+  'muelheim': '05117000',
   'leverkusen': '05316000',
   'solingen': '05122000',
   'remscheid': '05120000',
   'paderborn': '05774000',
   'siegen': '05970000',
   
-  // Hesse (Hessen)
+  // Hesse
   'frankfurt': '06412000',
   'wiesbaden': '06414000',
   'kassel': '06611000',
   'darmstadt': '06411000',
   'offenbach': '06413000',
-  'gießen': '06531000',
+  'giessen': '06531000',
   'marburg': '06534000',
   'fulda': '06631000',
   
-  // Lower Saxony (Niedersachsen)
+  // Lower Saxony
   'hanover': '03241000',
-  'hannover': '03241000',
   'braunschweig': '03101000',
   'oldenburg': '03403000',
-  'osnabrück': '03404000',
+  'osnabrueck': '03404000',
   'wolfsburg': '03103000',
-  'göttingen': '03152000',
+  'goettingen': '03152000',
   'salzgitter': '03102000',
   'hildesheim': '03254000',
   'delmenhorst': '03401000',
   'wilhelmshaven': '03405000',
   'celle': '03351000',
-  'lüneburg': '03355000',
+  'lueneburg': '03355000',
   
-  // Saxony (Sachsen)
+  // Saxony
   'leipzig': '14713000',
   'dresden': '14612000',
   'chemnitz': '14511000',
   'zwickau': '14524000',
   'plauen': '14523000',
-  'görlitz': '14626000',
+  'goerlitz': '14626000',
   
-  // Saxony-Anhalt (Sachsen-Anhalt)
+  // Saxony-Anhalt
   'magdeburg': '15003000',
   'halle': '15002000',
   'dessau': '15001000',
   'wittenberg': '15091000',
   
-  // Thuringia (Thüringen)
+  // Thuringia
   'erfurt': '16051000',
   'jena': '16053000',
   'gera': '16052000',
@@ -120,9 +116,9 @@ const Map<String, String> _arsLookup = {
   
   // Schleswig-Holstein
   'kiel': '01002000',
-  'lübeck': '01003000',
+  'luebeck': '01003000',
   'flensburg': '01001000',
-  'neumünster': '01004000',
+  'neumuenster': '01004000',
   
   // Mecklenburg-Vorpommern
   'rostock': '13003000',
@@ -132,7 +128,7 @@ const Map<String, String> _arsLookup = {
   'greifswald': '13001000',
   'wismar': '13074000',
   
-  // Rhineland-Palatinate (Rheinland-Pfalz)
+  // Rhineland-Palatinate
   'mainz': '07315000',
   'ludwigshafen': '07314000',
   'koblenz': '07111000',
@@ -140,28 +136,19 @@ const Map<String, String> _arsLookup = {
   'kaiserslautern': '07312000',
   
   // Saarland
-  'saarbrücken': '10041000',
+  'saarbruecken': '10041000',
   'saarlouis': '10044000',
   'neunkirchen': '10043000',
 };
 
 /// Looks up ARS code for a city name (case-insensitive, handles common variants)
 String? lookupARSForCity(String cityName) {
-  final normalized = cityName.toLowerCase().trim()
-      .replaceAll('ä', 'ae').replaceAll('ö', 'oe').replaceAll('ü', 'ue')
-      .replaceAll('ß', 'ss');
+  final normalized = cityName.toLowerCase().trim();
   
-  // Try direct match first
   if (_arsLookup.containsKey(normalized)) {
     return _arsLookup[normalized];
   }
   
-  // Try original (for umlaut keys like 'münchen')
-  if (_arsLookup.containsKey(cityName.toLowerCase().trim())) {
-    return _arsLookup[cityName.toLowerCase().trim()];
-  }
-  
-  // Try partial match for compound names (e.g., "Frankfurt am Main" → "Frankfurt")
   for (final entry in _arsLookup.entries) {
     if (normalized.startsWith(entry.key) || entry.key.startsWith(normalized)) {
       return entry.value;

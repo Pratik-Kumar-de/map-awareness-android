@@ -1,59 +1,93 @@
 # Map Awareness
 
-Flutter application aggregating traffic, weather, and emergency data for route planning in Germany.
+Application for aggregating traffic, environmental, and emergency data in Germany.
 
 ## Integrations
 
-*   **Maps & Routing**: OpenStreetMap via `flutter_map`, GraphHopper API.
-*   **Traffic Data**: Autobahn GmbH API (Roadworks, Warnings).
-*   **Weather Data**: DWD API (Warnings), Open-Meteo API (Conditions).
-*   **Emergency Alerts**: NINA API (Federal Office for Civil Protection).
-*   **Analysis**: Google Gemini API (Data summarization).
-
-## Technical Stack
-
-*   **Framework**: Flutter `^3.9.2`
-*   **Language**: Dart
-*   **Local Storage**: `shared_preferences`
-*   **HTTP Client**: `http` package
+| Domain | Provider | Implementation |
+| :--- | :--- | :--- |
+| **Routing** | GraphHopper | `services/location/` |
+| **Traffic** | Autobahn GmbH | `services/data/traffic_service.dart` |
+| **Weather** | DWD | `services/data/warning_service.dart` |
+| **Civil Defense** | NINA | `services/data/warning_service.dart` |
+| **Environment** | Open-Meteo | `services/data/environment_service.dart` |
+| **AI Summary** | Google Gemini | `services/data/gemini_service.dart` |
 
 ## Project Structure
 
-```
+```text
 lib/
-├── APIs/         # External API clients
-├── components/   # Shared UI components
-├── models/       # Data models and JSON serialization
-├── screens/      # Info screens
-│   ├── map/      # Map layer logic
-│   ├── routes/   # Route calculation and management
-│   ├── settings/ # Configuration
-│   └── warnings/ # Warning data display
-├── services/     # Data persistence and caching
-├── widgets/      # Reusable widgets
-└── main.dart     # Entry point
+├── data/                    # Static datasets and ARS lookups
+├── models/                  # Domain models (Internal state)
+│   └── dto/                 # Data Transfer Objects (External API responses)
+├── providers/               # Riverpod state management providers
+├── router/                  # GoRouter configuration and route definitions
+├── screens/                 # Application views associated with routes
+│   ├── map/                 # Map interface and layer visualization
+│   ├── routes/              # Route planning and management interfaces
+│   ├── settings/            # Application configuration
+│   └── warnings/            # Warning lists and details
+├── services/                # Backend integration and business logic
+│   ├── core/                # Infrastructure (HTTP, Storage, API types)
+│   ├── data/                # Data fetching (Traffic, Weather, Environment)
+│   └── location/            # Geolocation, Geocoding, and Routing
+├── utils/                   # Shared utilities and Theme definitions
+└── widgets/                 # Reusable UI components
+    ├── buttons/             # Button variants
+    ├── cards/               # Data display containers
+    ├── common/              # Shared UI elements (Loaders, Badges)
+    ├── feedback/            # Visual feedback components
+    ├── inputs/              # Form fields and search inputs
+    └── layout/              # Structural components (AppShell)
 ```
 
-## Commands
+## Setup & Configuration
 
-### Setup
+### Prerequisites
+*   Flutter SDK
+*   Dart SDK
 
+### 1. Installation
 ```bash
 flutter pub get
+dart run build_runner build --delete-conflicting-outputs
 ```
 
-### Run
+### 2. API Keys
 
+| Service | Purpose | Configuration Method |
+| :--- | :--- | :--- |
+| **Google Gemini** | AI Summaries | **In-App:** Go to *Settings* > *API Key* to enter your key. |
+| **GraphHopper** | Routing/Geocoding | **Source:** Update `apiKey` in `lib/services/location/geocoding_service.dart`. |
+
+## Running & Building
+
+### Development
 ```bash
+# Run on connected device
 flutter run
-# Platform specific
+
+# Run on Windows desktop
 flutter run -d windows
-flutter run -d android
 ```
 
-### Build
+### Production
 
+**Android APK**
 ```bash
-flutter build windows
-flutter build apk
+flutter build apk --release
+# Output: build/app/outputs/flutter-apk/app-release.apk
 ```
+
+**Windows Executable**
+```bash
+flutter build windows --release
+# Output: build/windows/runner/Release/
+```
+
+## Tech Stack
+- **Framework**: Flutter / Dart
+- **State**: Riverpod
+- **Maps**: Flutter Map (OSM)
+- **Data**: Dio, json_serializable
+- **Theming**: FlexColorScheme
