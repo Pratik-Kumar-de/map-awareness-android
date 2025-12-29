@@ -286,7 +286,6 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
 
   /// Aggregates and builds all map markers (route, events, warnings) based on current state.
   List<Marker> _buildMarkers(RouteState routeState, WarningState warningState, bool hasRoute, bool isRadiusMode) {
-    final cs = Theme.of(context).colorScheme;
     final markers = <Marker>[];
 
     // Temporary start marker (during creation).

@@ -2,26 +2,26 @@ import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:dio_smart_retry/dio_smart_retry.dart';
 
-/// Caching http client.
+/// Configurable HTTP client with interceptors for retries, caching, and timed-out requests.
 class DioClient {
   static final Dio instance = _createDio();
   static late final CacheOptions cacheOptions;
 
-  /// Creates and configures the Dio instance with timeouts and memory caching.
+  /// Initializes Dio with default timeouts and interceptors (Retry, Cache).
   static Dio _createDio() {
     final dio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 15),
     ));
 
-    // Retry interceptor.
+    // Configures automatic retry for failed requests (2 retries).
     dio.interceptors.add(RetryInterceptor(
       dio: dio,
       retries: 2,
       retryDelays: const [Duration(seconds: 1), Duration(seconds: 2)],
     ));
 
-    // Memory cache.
+    // Configures in-memory caching store.
     cacheOptions = CacheOptions(
       store: MemCacheStore(),
       policy: CachePolicy.request,
@@ -32,7 +32,7 @@ class DioClient {
     return dio;
   }
 
-  /// Returns options for a short-term cache (15 minutes).
+  /// Generates short-term cache options (15 minutes TTL).
   static Options shortCache() => cacheOptions
       .copyWith(
         policy: CachePolicy.forceCache,
@@ -40,7 +40,7 @@ class DioClient {
       )
       .toOptions();
 
-  /// Returns options for a long-term cache (24 hours).
+  /// Generates long-term cache options (24 hours TTL).
   static Options longCache() => cacheOptions
       .copyWith(
         policy: CachePolicy.forceCache,
@@ -48,18 +48,18 @@ class DioClient {
       )
       .toOptions();
 
-  /// Returns options to force a cache refresh.
+  /// Generates options to bypass and refresh cache.
   static Options noCache() => cacheOptions
       .copyWith(policy: CachePolicy.refresh)
       .toOptions();
 
-  /// Safely fetches a single object.
+  /// Safely executes a GET request and deserializes the JSON response body.
   static Future<T?> safeGet<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
     Options? options,
     required T Function(Map<String, dynamic>) fromJson,
-    String? dataKey,
+    String? dataKey, // Optional key to extract from response data map
   }) async {
     try {
       final res = await instance.get(path, queryParameters: queryParameters, options: options);

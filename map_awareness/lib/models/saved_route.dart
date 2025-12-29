@@ -5,11 +5,11 @@ part 'saved_route.g.dart';
 /// Data model representing a specific autobahn segment (start/end points).
 @JsonSerializable()
 class AutobahnData {
-  final String name;
-  final double startLat;
-  final double startLng;
-  final double endLat;
-  final double endLng;
+  final String name; // Road identifier (e.g. A1)
+  final double startLat; // Segment start latitude
+  final double startLng; // Segment start longitude
+  final double endLat; // Segment end latitude
+  final double endLng; // Segment end longitude
 
   AutobahnData({
     required this.name,
@@ -26,14 +26,14 @@ class AutobahnData {
 /// Entity representing a fully defined user-saved route with segments and metadata.
 @JsonSerializable()
 class SavedRoute {
-  final String id;
-  final String name;
-  final String startCoordinate;
-  final String endCoordinate;
-  final String startLocation;
-  final String endLocation;
-  final List<AutobahnData> autobahnSegments;
-  final DateTime createdAt;
+  final String id; // Unique identifier
+  final String name; // Route label
+  final String startCoordinate; // Start lat,lng string
+  final String endCoordinate; // End lat,lng string
+  final String startLocation; // Resolved start address
+  final String endLocation; // Resolved end address
+  final List<AutobahnData> autobahnSegments; // List of road segments
+  final DateTime createdAt; // Creation timestamp
 
   SavedRoute({
     required this.id,

@@ -147,13 +147,16 @@ const Map<String, String> _arsLookup = {
 };
 
 /// Resolves a city name to its corresponding ARS (Amtlicher Regionalschlüssel) code for API queries.
+/// Performs exact match first, then falls back to prefix/substring matching to handle typos or variants.
 String? lookupARSForCity(String cityName) {
   final normalized = cityName.toLowerCase().trim();
   
+  // Exact match lookup.
   if (_arsLookup.containsKey(normalized)) {
     return _arsLookup[normalized];
   }
   
+  // Fuzzy fallback: checks if input starts with or is contained within any known city key.
   for (final entry in _arsLookup.entries) {
     if (normalized.startsWith(entry.key) || entry.key.startsWith(normalized)) {
       return entry.value;

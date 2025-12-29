@@ -170,6 +170,7 @@ class WarningItem implements Comparable<WarningItem> {
      );
   }
 
+  /// Maps raw severity string from NINA API to WarningSeverity enum.
   static WarningSeverity _severityFromString(String s) {
     switch (s.toLowerCase()) {
       case 'extreme': return WarningSeverity.extreme;

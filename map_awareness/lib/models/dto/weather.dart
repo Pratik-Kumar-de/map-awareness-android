@@ -2,8 +2,6 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'weather.g.dart';
 
-/// Current weather data.
-@JsonSerializable(createToJson: false)
 /// Data Transfer Object for OpenMeteo weather response.
 @JsonSerializable(createToJson: false)
 class WeatherDto {
