@@ -12,14 +12,14 @@ import 'package:map_awareness/widgets/cards/roadwork_tile.dart';
 import 'package:map_awareness/widgets/cards/warning_card.dart';
 import 'package:map_awareness/widgets/cards/ai_summary_card.dart';
 import 'package:map_awareness/widgets/cards/weather_info_card.dart';
-import 'package:map_awareness/widgets/cards/alternative_routes_card.dart';
+import 'package:map_awareness/widgets/cards/route_comparison_sheet.dart';
 import 'package:map_awareness/widgets/common/empty_state.dart';
-import 'package:map_awareness/widgets/buttons/gradient_button.dart';
-import 'package:map_awareness/widgets/buttons/secondary_button.dart';
+import 'package:map_awareness/widgets/buttons/app_button.dart';
 import 'package:map_awareness/widgets/inputs/location_input.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 import 'package:map_awareness/utils/app_animations.dart';
 import 'package:map_awareness/utils/helpers.dart';
+import 'package:map_awareness/utils/bottom_sheet.dart';
 
 
 /// Screen for planning and managing saved travel routes.
@@ -121,6 +121,11 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
       ToastService.error(context, 'Location not found');
     } else {
       Haptics.heavy();
+      // Shows comparison sheet if alternatives available.
+      final state = ref.read(routeProvider);
+      if (mounted && state.alternatives.isNotEmpty) {
+        showAppSheet(context, child: const RouteComparisonSheet());
+      }
     }
   }
 
@@ -174,6 +179,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final theme = Theme.of(context);
     final state = ref.watch(routeProvider);
     
     // Syncs controllers.
@@ -192,21 +198,21 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
         Container(
           margin: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-            boxShadow: AppTheme.cardShadow,
+            boxShadow: AppTheme.cardShadow(context),
           ),
           child: TabBar(
             controller: _tabController,
             indicator: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.12),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
             indicatorSize: TabBarIndicatorSize.tab,
             dividerColor: Colors.transparent,
-            labelColor: AppTheme.primary,
-            unselectedLabelColor: AppTheme.textMuted,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            labelColor: theme.colorScheme.primary,
+            unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
             onTap: (i) => setState(() {}), // Ensurse rebuild.
             tabs: const [
               Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.directions_rounded, size: 20), SizedBox(width: 8), Text('Plan Route')])),
@@ -218,8 +224,8 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
           child: AnimatedSwitcher(
             duration: AppAnimations.normal,
             child: _tabController.index == 0 
-                ? KeyedSubtree(key: const ValueKey(0), child: _buildPlanTab(state))
-                : KeyedSubtree(key: const ValueKey(1), child: _buildSavedTab()),
+                ? KeyedSubtree(key: const ValueKey(0), child: _buildPlanTab(theme, state))
+                : KeyedSubtree(key: const ValueKey(1), child: _buildSavedTab(theme)),
           ),
         ),
       ],
@@ -227,20 +233,20 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
   }
 
   /// Builds the route planning tab with input fields and results.
-  Widget _buildPlanTab(RouteState state) {
+  Widget _buildPlanTab(ThemeData theme, RouteState state) {
     return RefreshIndicator(
       onRefresh: () => ref.read(routeProvider.notifier).refresh(
         _startController.text,
         _endController.text,
       ),
-      color: AppTheme.primary,
+      color: theme.colorScheme.primary,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_editingId != null) _buildEditingBanner(),
+          if (_editingId != null) _buildEditingBanner(theme),
 
           LocationInput(
             startController: _startController,
@@ -269,11 +275,11 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
             child: TextField(
               controller: _nameController,
-              style: Theme.of(context).textTheme.bodyLarge,
+              style: theme.textTheme.bodyLarge,
               decoration: InputDecoration(
                 hintText: 'Route name (optional)',
-                hintStyle: TextStyle(color: AppTheme.textMuted),
-                prefixIcon: const Icon(Icons.label_outline_rounded, color: AppTheme.textSecondary),
+                hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                prefixIcon: Icon(Icons.label_outline_rounded, color: theme.colorScheme.onSurfaceVariant),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
@@ -288,7 +294,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
             children: [
               Expanded(
                 flex: 2,
-                child: GradientButton(
+                child: AppButton.primary(
                   label: 'Calculate Route',
                   icon: Icons.directions_rounded,
                   onPressed: state.isLoading ? null : _calculateRoute,
@@ -297,7 +303,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: SecondaryButton(
+                child: AppButton.secondary(
                   label: _editingId != null ? 'Update' : 'Save',
                   icon: _editingId != null ? Icons.check_rounded : Icons.bookmark_add_rounded,
                   onPressed: state.isLoading || _isSaving || !state.hasRoute ? null : _saveRoute,
@@ -324,15 +330,19 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
                   ),
                   const SizedBox(height: 16),
                 ],
-                if (state.alternatives.isNotEmpty) ...[ 
-                  AlternativeRoutesCard(alternatives: state.alternatives),
+                if (state.alternatives.isNotEmpty) ...[
+                  _RouteSelectionChip(
+                    routeCount: state.availableRoutes.length,
+                    selectedIndex: state.selectedRouteIndex,
+                    onTap: () => showAppSheet(context, child: const RouteComparisonSheet()),
+                  ),
                   const SizedBox(height: 16),
                 ],
                 if (state.roadworks.isNotEmpty) ...[ 
                   RoadworksSummary(roadworks: state.roadworks),
                   const SizedBox(height: 16),
                 ],
-                if (state.warnings.isNotEmpty) _buildWarningsSection(state),
+                if (state.warnings.isNotEmpty) _buildWarningsSection(theme, state),
                 if (state.roadworks.isNotEmpty || state.warnings.isNotEmpty) ...[ 
                   const SizedBox(height: 16),
                   AiSummaryCard(
@@ -347,11 +357,10 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
                 ],
                 if (state.hasRoute) ...[ 
                   const SizedBox(height: 16),
-                  GradientButton(
+                  AppButton.primary(
                     label: 'View on Map',
                     icon: Icons.map_rounded,
                     onPressed: () => AppRouter.goToMap(),
-                    gradient: LinearGradient(colors: [AppTheme.accent, AppTheme.accentLight]),
                   ),
                 ],
               ],
@@ -363,24 +372,30 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
   }
 
   /// Builds a banner indicating that a saved route is currently being edited.
-  Widget _buildEditingBanner() {
+  Widget _buildEditingBanner(ThemeData theme) {
+    final secondary = theme.colorScheme.secondary;
     return Container(
       padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [AppTheme.accent.withValues(alpha: 0.15), AppTheme.accent.withValues(alpha: 0.05)]),
+        color: secondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
+        border: Border.all(color: secondary.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: AppTheme.accent, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: secondary, borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.edit_rounded, size: 16, color: Colors.white),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Text('Editing route', style: TextStyle(color: AppTheme.accent.withValues(alpha: 0.9), fontWeight: FontWeight.w600))),
+          Expanded(
+            child: Text(
+              'Editing route', 
+              style: TextStyle(color: secondary, fontWeight: FontWeight.w700),
+            ),
+          ),
           TextButton(
             onPressed: () {
               Haptics.select();
@@ -394,18 +409,23 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
   }
 
   /// Builds an expandable section for active warnings along the route.
-  Widget _buildWarningsSection(RouteState state) {
+  Widget _buildWarningsSection(ThemeData theme, RouteState state) {
     return Semantics(
       excludeSemantics: true,
       child: PremiumCard(
         padding: EdgeInsets.zero,
         child: ExpansionTile(
+          shape: const Border(),
+          collapsedShape: const Border(),
           leading: Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: AppTheme.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 20),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.tertiaryContainer, 
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.warning_amber_rounded, color: theme.colorScheme.onTertiaryContainer, size: 20),
           ),
-          title: Text('${state.warnings.length} Warnings', style: const TextStyle(fontWeight: FontWeight.w600)),
+          title: Text('${state.warnings.length} Warnings', style: const TextStyle(fontWeight: FontWeight.w700)),
           children: state.warnings.map((w) => Padding(
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
             child: WarningCard(warning: w),
@@ -416,7 +436,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
   }
 
   /// Builds the tab displaying a list of user-saved routes.
-  Widget _buildSavedTab() {
+  Widget _buildSavedTab(ThemeData theme) {
     if (_savedRoutes.isEmpty) {
       return const EmptyStateWidget(
         icon: Icons.bookmark_border_rounded,
@@ -427,7 +447,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
 
     return RefreshIndicator(
       onRefresh: _loadSavedRoutes,
-      color: AppTheme.primary,
+      color: theme.colorScheme.primary,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
@@ -452,16 +472,16 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
                       });
                       _tabController.animateTo(0);
                     },
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
                     icon: Icons.edit_rounded,
                     label: 'Edit',
                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
                   ),
                   SlidableAction(
                     onPressed: (_) => _deleteRoute(route),
-                    backgroundColor: AppTheme.error,
-                    foregroundColor: Colors.white,
+                    backgroundColor: theme.colorScheme.error,
+                    foregroundColor: theme.colorScheme.onError,
                     icon: Icons.delete_rounded,
                     label: 'Delete',
                     borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
@@ -478,27 +498,80 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(12)),
-                      child: const Icon(Icons.route_rounded, color: Colors.white, size: 22),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer, 
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.route_rounded, color: theme.colorScheme.onPrimaryContainer, size: 22),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(route.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                          Text(route.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                           const SizedBox(height: 4),
-                          Text('${route.autobahnSegments.length} segments', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                          Text(
+                            '${route.autobahnSegments.length} segments', 
+                            style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13),
+                          ),
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+                    Icon(Icons.chevron_right_rounded, color: theme.colorScheme.onSurfaceVariant),
                   ],
                 ),
               ),
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Compact chip showing current route selection with tap to compare.
+class _RouteSelectionChip extends StatelessWidget {
+  final int routeCount;
+  final int selectedIndex;
+  final VoidCallback onTap;
+
+  const _RouteSelectionChip({
+    required this.routeCount,
+    required this.selectedIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.primaryContainer,
+      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      child: InkWell(
+        onTap: () {
+          Haptics.select();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.alt_route_rounded, color: cs.onPrimaryContainer, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Route ${selectedIndex + 1} of $routeCount',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: cs.onPrimaryContainer),
+                ),
+              ),
+              Text('Compare', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded, color: cs.primary, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }

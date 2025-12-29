@@ -3,7 +3,8 @@ import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/widgets/common/loading_shimmer.dart';
 import 'package:map_awareness/router/app_router.dart';
 import 'package:map_awareness/services/services.dart';
-import 'package:map_awareness/utils/app_theme.dart';
+
+import 'package:map_awareness/widgets/common/glass_container.dart';
 
 /// Widget for displaying AI-generated route summaries, handling loading and API key states.
 class AiSummaryCard extends StatefulWidget {
@@ -43,35 +44,27 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      clipBehavior: Clip.antiAlias,
+    return GlassContainer(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gradient header.
+          // Adaptive header.
           Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [const Color(0xFF7C4DFF).withValues(alpha: 0.12), const Color(0xFF651FFF).withValues(alpha: 0.06)],
-              ),
+              color: primaryColor.withValues(alpha: 0.08),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFF7C4DFF), Color(0xFF651FFF)]),
+                    color: primaryColor,
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: [BoxShadow(color: const Color(0xFF7C4DFF).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))],
                   ),
                   child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
                 ),
@@ -79,7 +72,7 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
                 Expanded(
                   child: Text(
                     widget.title,
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF5E35B1)),
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: primaryColor),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -90,7 +83,7 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
                     child: InkWell(
                       onTap: () { Haptics.select(); widget.onRefresh?.call(); },
                       borderRadius: BorderRadius.circular(8),
-                      child: Container(padding: const EdgeInsets.all(8), child: const Icon(Icons.refresh_rounded, size: 20, color: Color(0xFF7C4DFF))),
+                      child: Container(padding: const EdgeInsets.all(8), child: Icon(Icons.refresh_rounded, size: 20, color: primaryColor)),
                     ),
                   ),
               ],
@@ -111,11 +104,11 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: AppTheme.surfaceContainer, borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.auto_awesome, size: 12, color: AppTheme.textMuted),
+                    Icon(Icons.auto_awesome, size: 12, color: theme.colorScheme.outline),
                     const SizedBox(width: 4),
-                    Text('Powered by Gemini', style: theme.textTheme.labelSmall?.copyWith(color: AppTheme.textMuted, fontWeight: FontWeight.w500)),
+                    Text('Powered by Gemini', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline, fontWeight: FontWeight.w500)),
                   ]),
                 ),
               ],
@@ -128,12 +121,13 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
 
   /// Renders a prompt to configure the API key in settings if missing.
   Widget _buildApiKeyHint(ThemeData theme) {
+    final errorColor = theme.colorScheme.error;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [AppTheme.error.withValues(alpha: 0.1), AppTheme.error.withValues(alpha: 0.04)]),
+        color: errorColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.error.withValues(alpha: 0.2)),
+        border: Border.all(color: errorColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,14 +135,14 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
           Row(children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: AppTheme.error.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.key_off_rounded, color: AppTheme.error, size: 18),
+              decoration: BoxDecoration(color: errorColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+              child: Icon(Icons.key_off_rounded, color: errorColor, size: 18),
             ),
             const SizedBox(width: 12),
-            Expanded(child: Text('Setup AI Summary', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.error))),
+            Expanded(child: Text('Setup AI Summary', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: errorColor))),
           ]),
           const SizedBox(height: 12),
-          Text('To get AI safety insights, add your free Gemini API key in settings.', style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary)),
+          Text('To get AI safety insights, add your free Gemini API key in settings.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -161,7 +155,7 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
               },
               icon: const Icon(Icons.settings_rounded, size: 18),
               label: const Text('Open Settings'),
-              style: FilledButton.styleFrom(backgroundColor: AppTheme.error, padding: const EdgeInsets.symmetric(vertical: 12)),
+              style: FilledButton.styleFrom(backgroundColor: errorColor, padding: const EdgeInsets.symmetric(vertical: 12)),
             ),
           ),
         ],
@@ -188,9 +182,9 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
       }
       
       return Row(children: [
-        Icon(Icons.lightbulb_outline_rounded, color: AppTheme.textMuted, size: 18),
+        Icon(Icons.lightbulb_outline_rounded, color: theme.colorScheme.outline, size: 18),
         const SizedBox(width: 8),
-        Expanded(child: Text('Tap refresh to generate safety insights...', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.textMuted, fontStyle: FontStyle.italic))),
+        Expanded(child: Text('Tap refresh to generate safety insights...', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline, fontStyle: FontStyle.italic))),
       ]);
     }
 
@@ -200,6 +194,6 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
       );
     }
     
-    return Text(widget.summary!, style: theme.textTheme.bodyMedium?.copyWith(height: 1.6, color: AppTheme.textPrimary));
+    return Text(widget.summary!, style: theme.textTheme.bodyMedium?.copyWith(height: 1.6, color: theme.colorScheme.onSurface));
   }
 }

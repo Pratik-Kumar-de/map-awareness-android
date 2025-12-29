@@ -4,42 +4,38 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:map_awareness/utils/helpers.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'geo_coordinate.dart';
+import 'autobahn_item.dart';
 
 part 'roadwork.g.dart';
 
 /// Data Transfer Object for roadworks from autobahn API.
 @JsonSerializable(createToJson: false)
-class RoadworkDto {
-  @JsonKey(defaultValue: '') final String identifier;
-  @JsonKey(defaultValue: '') final String title;
-  @JsonKey(defaultValue: '') final String subtitle;
+class RoadworkDto extends AutobahnItemDto {
   @JsonKey(defaultValue: '') final String icon;
   @JsonKey(name: 'display_type', defaultValue: '') final String displayType;
   @JsonKey(defaultValue: '') final String? startTimestamp;
   @JsonKey(fromJson: safeBool) final bool isBlocked;
   @JsonKey(name: 'future', fromJson: safeBool) final bool isFuture;
-  final List<String>? description;
-  final GeoCoordinate? coordinate;
 
   RoadworkDto({
-    required this.identifier, required this.title,
-    required this.subtitle, required this.icon, required this.displayType,
-    this.startTimestamp, this.isBlocked = false, this.isFuture = false,
-    this.description, this.coordinate,
+    required super.identifier, 
+    required super.title,
+    required super.subtitle, 
+    required this.icon, 
+    required this.displayType,
+    this.startTimestamp, 
+    this.isBlocked = false, 
+    this.isFuture = false,
+    super.description, 
+    super.coordinate,
   });
 
   factory RoadworkDto.fromJson(Map<String, dynamic> json) => _$RoadworkDtoFromJson(json);
-
-  /// Joins multiline description list into single text block.
-  String get descriptionText => description?.join('\n') ?? '';
 
   String get formattedTimeRange => formatTimeRange(
     startTimestamp != null ? DateTime.tryParse(startTimestamp!) : null, 
     null
   );
-
-  double? get latitude => coordinate?.latitude;
-  double? get longitude => coordinate?.longitude;
 
   String? get length => Helpers.findByPrefix(description, 'Length');
   String? get speedLimit => Helpers.findByPrefix(description, 'Maximum Speed');

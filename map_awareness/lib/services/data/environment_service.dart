@@ -10,9 +10,8 @@ class EnvironmentService {
   EnvironmentService._();
 
   /// Fetches current air quality metrics (US AQI, PM10, PM2.5) for given coordinates.
-  static Future<OpenMeteoAirQualityDto?> getAirQuality(double lat, double lng) async {
-    try {
-      final res = await DioClient.instance.get(
+  static Future<OpenMeteoAirQualityDto?> getAirQuality(double lat, double lng) => 
+      DioClient.safeGet(
         _airQualityUrl,
         queryParameters: {
           'latitude': lat,
@@ -20,14 +19,10 @@ class EnvironmentService {
           'current': 'us_aqi,pm10,pm2_5',
           'timezone': 'auto',
         },
+        dataKey: 'current',
+        fromJson: OpenMeteoAirQualityDto.fromJson,
         options: DioClient.shortCache(),
       );
-      if (res.data['current'] == null) return null;
-      return OpenMeteoAirQualityDto.fromJson(res.data['current']);
-    } catch (_) {
-      return null;
-    }
-  }
 
   /// Fetches river discharge forecast for flood analysis.
   static Future<OpenMeteoFloodDto?> getFloodData(double lat, double lng) async {
@@ -55,6 +50,7 @@ class EnvironmentService {
         unit: unit,
       );
     } catch (_) {
+      // Graceful degradation: flood data optional.
       return null;
     }
   }
@@ -102,6 +98,7 @@ class EnvironmentService {
         return WeatherDto.fromJson(res.data['current']);
       }
     } catch (_) {
+      // Graceful degradation: weather data optional.
       return null;
     }
   }

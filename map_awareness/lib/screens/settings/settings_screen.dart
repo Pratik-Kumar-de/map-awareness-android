@@ -68,7 +68,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 20),
               Text('Delete API Key?', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
-              Text('This will remove your Gemini API key from the app.', style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary), textAlign: TextAlign.center),
+              Text('This will remove your Gemini API key from the app.', style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant), textAlign: TextAlign.center),
               const SizedBox(height: 24),
               Row(children: [
                 Expanded(child: TextButton(onPressed: () => ctx.pop(false), style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)), child: const Text('Cancel'))),
@@ -136,7 +136,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         Container(
           width: 56, height: 56,
           decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(14),
+            gradient: LinearGradient(colors: [theme.colorScheme.primary, theme.colorScheme.tertiary]), borderRadius: BorderRadius.circular(14),
             boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
           ),
           child: const Icon(Icons.map_rounded, color: Colors.white, size: 28),
@@ -208,12 +208,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Gemini API Key', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 2),
-            Text(_hasKey ? 'Configured' : 'Not configured', style: theme.textTheme.bodySmall?.copyWith(color: _hasKey ? AppTheme.success : AppTheme.error, fontWeight: FontWeight.w500)),
+            Text(_hasKey ? 'Configured' : 'Not configured', style: theme.textTheme.bodySmall?.copyWith(color: _hasKey ? Colors.green : AppTheme.error, fontWeight: FontWeight.w500)),
           ])),
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: _hasKey ? AppTheme.success.withValues(alpha: 0.12) : AppTheme.error.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-            child: Icon(_hasKey ? Icons.check_rounded : Icons.close_rounded, color: _hasKey ? AppTheme.success : AppTheme.error, size: 18),
+            decoration: BoxDecoration(color: _hasKey ? Colors.green.withValues(alpha: 0.12) : AppTheme.error.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+            child: Icon(_hasKey ? Icons.check_rounded : Icons.close_rounded, color: _hasKey ? Colors.green : AppTheme.error, size: 18),
           ),
         ]),
         const SizedBox(height: 20),
@@ -221,22 +221,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         if (!_hasKey)
           Container(
             padding: const EdgeInsets.all(14), margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(color: AppTheme.info.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.info.withValues(alpha: 0.2))),
-            child: Row(children: [const Icon(Icons.info_outline_rounded, color: AppTheme.info, size: 20), const SizedBox(width: 12), Expanded(child: Text('Get a free key at aistudio.google.com', style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.info)))]),
+            decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withValues(alpha: 0.2))),
+            child: Row(children: [Icon(Icons.info_outline_rounded, color: Colors.blue, size: 20), const SizedBox(width: 12), Expanded(child: Text('Get a free key at aistudio.google.com', style: theme.textTheme.bodySmall?.copyWith(color: Colors.blue)))]),
           ),
 
-        Container(
-          decoration: BoxDecoration(color: AppTheme.surfaceContainer, borderRadius: BorderRadius.circular(12)),
-          child: TextField(
-            controller: _controller, obscureText: _isObscured, style: theme.textTheme.bodyMedium,
-            decoration: InputDecoration(
-              hintText: 'Enter your API key', hintStyle: TextStyle(color: AppTheme.textMuted), filled: false, border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              prefixIcon: const Icon(Icons.key_rounded, color: AppTheme.textSecondary, size: 20),
-              suffixIcon: IconButton(icon: Icon(_isObscured ? Icons.visibility_rounded : Icons.visibility_off_rounded, color: AppTheme.textSecondary, size: 20), onPressed: () => setState(() => _isObscured = !_isObscured)),
+          Container(
+            decoration: BoxDecoration(color: theme.colorScheme.surfaceContainer, borderRadius: BorderRadius.circular(12)),
+            child: TextField(
+              controller: _controller, obscureText: _isObscured, style: theme.textTheme.bodyMedium,
+              decoration: InputDecoration(
+                hintText: 'Enter your API key', hintStyle: TextStyle(color: theme.colorScheme.outline), filled: false, border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                prefixIcon: Icon(Icons.key_rounded, color: theme.colorScheme.onSurfaceVariant, size: 20),
+                suffixIcon: IconButton(icon: Icon(_isObscured ? Icons.visibility_rounded : Icons.visibility_off_rounded, color: theme.colorScheme.onSurfaceVariant, size: 20), onPressed: () => setState(() => _isObscured = !_isObscured)),
+              ),
             ),
           ),
-        ),
         const SizedBox(height: 16),
 
         Row(children: [
@@ -264,17 +264,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildPrivacyCard(ThemeData theme) {
     return PremiumCard(
       child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: AppTheme.success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-          child: const Icon(Icons.privacy_tip_outlined, color: AppTheme.success, size: 20),
-        ),
-        const SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Data Privacy', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text('API keys are stored locally and never sent to our servers.', style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary)),
-        ])),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.privacy_tip_outlined, color: Colors.green, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Data Privacy', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text('API keys are stored locally and never sent to our servers.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ])),
       ]),
     );
   }

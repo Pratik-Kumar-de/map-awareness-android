@@ -54,6 +54,7 @@ class GeocodingService {
         displayName: h['name'] ?? h['city'] ?? query,
       )).toList();
     } catch (_) {
+      // Graceful degradation: return empty on API failure.
       return [];
     }
   }
@@ -71,6 +72,7 @@ class GeocodingService {
       final hit = hits.first;
       return hit['city'] ?? hit['town'] ?? hit['village'] ?? hit['name'] ?? hit['street'];
     } catch (_) {
+      // Graceful degradation: return null on reverse geocode failure.
       return null;
     }
   }

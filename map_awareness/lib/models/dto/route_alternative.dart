@@ -1,3 +1,4 @@
+import 'package:map_awareness/models/saved_route.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
@@ -7,20 +8,23 @@ class RouteAlternative {
   final int time; // milliseconds
   final List<double> bbox; // [minLon, minLat, maxLon, maxLat]
   final String points; // Encoded polyline
+  final List<AutobahnData> segments; // Parsed autobahn segments
 
   RouteAlternative({
     required this.distance,
     required this.time,
     required this.bbox,
     required this.points,
+    this.segments = const [],
   });
 
-  factory RouteAlternative.fromJson(Map<String, dynamic> json) {
+  factory RouteAlternative.fromJson(Map<String, dynamic> json, {List<AutobahnData> segments = const []}) {
     return RouteAlternative(
       distance: (json['distance'] as num).toDouble(),
       time: json['time'] as int,
       bbox: (json['bbox'] as List).map((e) => (e as num).toDouble()).toList(),
       points: json['points'] as String,
+      segments: segments,
     );
   }
 

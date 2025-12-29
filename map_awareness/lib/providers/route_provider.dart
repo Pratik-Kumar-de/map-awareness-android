@@ -28,6 +28,8 @@ class RouteState {
   final bool isSummaryLoading;
   final bool showParking;
   final bool showCharging;
+  final List<RouteAlternative> availableRoutes;
+  final int selectedRouteIndex;
 
   const RouteState({
     this.polyline = const [],
@@ -44,6 +46,8 @@ class RouteState {
     this.departureWeather,
     this.arrivalWeather,
     this.alternatives = const [],
+    this.availableRoutes = const [],
+    this.selectedRouteIndex = 0,
     this.isLoading = false,
     this.isSummaryLoading = false,
     this.showParking = false,
@@ -69,6 +73,8 @@ class RouteState {
     bool? isSummaryLoading,
     bool? showParking,
     bool? showCharging,
+    List<RouteAlternative>? availableRoutes,
+    int? selectedRouteIndex,
   }) {
     return RouteState(
       polyline: polyline ?? this.polyline,
@@ -89,6 +95,8 @@ class RouteState {
       isSummaryLoading: isSummaryLoading ?? this.isSummaryLoading,
       showParking: showParking ?? this.showParking,
       showCharging: showCharging ?? this.showCharging,
+      availableRoutes: availableRoutes ?? this.availableRoutes,
+      selectedRouteIndex: selectedRouteIndex ?? this.selectedRouteIndex,
     );
   }
 
@@ -135,9 +143,11 @@ class RouteNotifier extends StateNotifier<RouteState> {
       TrafficService.fetchRoadworksForSegments(routeResult.autobahnList),
       TrafficService.fetchChargingForSegments(routeResult.autobahnList),
       TrafficService.fetchParkingForSegments(routeResult.autobahnList),
+
       WarningService.getUnifiedWarningsForCities([start.cityName, end.cityName]),
-      GeocodingService.resolveName(start),
-      GeocodingService.resolveName(end),
+      // Resovle names from the EXACT coordinates we used for routing.
+      GeocodingService.resolveName(startCoords),
+      GeocodingService.resolveName(endCoords),
       EnvironmentService.getWeather(startLat, startLng),
       EnvironmentService.getWeather(endLat, endLng, forecastTime: arrivalTime),
     ]);
@@ -165,6 +175,8 @@ class RouteNotifier extends StateNotifier<RouteState> {
       departureWeather: departureWeather,
       arrivalWeather: arrivalWeather,
       alternatives: routeResult.alternatives,
+      availableRoutes: [routeResult.mainRoute, ...routeResult.alternatives],
+      selectedRouteIndex: 0,
       isLoading: false,
       isSummaryLoading: true,
     );
@@ -195,6 +207,7 @@ class RouteNotifier extends StateNotifier<RouteState> {
       );
       state = state.copyWith(aiSummary: summary, isSummaryLoading: false);
     } catch (_) {
+      // Graceful degradation: summary is optional enhancement.
       state = state.copyWith(isSummaryLoading: false);
     }
   }
@@ -224,6 +237,54 @@ class RouteNotifier extends StateNotifier<RouteState> {
   Future<void> refresh(String start, String end) async {
     if (start.isEmpty || end.isEmpty) return;
     await calculate(start, end);
+  }
+
+  /// Switches the active route to the one at the selected index.
+  Future<void> selectRoute(int index) async {
+    if (index < 0 || index >= state.availableRoutes.length || index == state.selectedRouteIndex) return;
+
+    final route = state.availableRoutes[index];
+    state = state.copyWith(isLoading: true, isSummaryLoading: true, selectedRouteIndex: index);
+
+    // Estimates arrival time.
+    final totalDistance = route.distance;
+    final estimatedHours = totalDistance / 100000; // Rough estimation
+    final arrivalTime = clock.now().add(Duration(minutes: (estimatedHours * 60).round()));
+
+    // Fetches data for new route.
+    final results = await Future.wait([
+      TrafficService.fetchRoadworksForSegments(route.segments),
+      TrafficService.fetchChargingForSegments(route.segments),
+      TrafficService.fetchParkingForSegments(route.segments),
+      EnvironmentService.getWeather(route.coordinates.last.latitude, route.coordinates.last.longitude, forecastTime: arrivalTime),
+    ]);
+
+    final roadworks = results[0] as List<List<RoadworkDto>>;
+    final charging = results[1] as List<ChargingStationDto>;
+    final parking = results[2] as List<ParkingDto>;
+    final arrivalWeather = results[3] as WeatherDto?;
+
+    state = state.copyWith(
+      polyline: route.coordinates,
+      autobahns: route.segments,
+      roadworks: roadworks,
+      chargingStations: charging,
+      parkingAreas: parking,
+      arrivalWeather: arrivalWeather,
+      isLoading: false,
+    );
+
+    // Regenerates summary.
+    if (state.startName != null && state.endName != null) {
+      _generateSummary(
+        roadworks, 
+        state.warnings, 
+        state.startName!, 
+        state.endName!, 
+        state.departureWeather, 
+        arrivalWeather,
+      );
+    }
   }
 }
 

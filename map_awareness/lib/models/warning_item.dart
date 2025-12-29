@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import 'package:map_awareness/models/dto/dto.dart';
-import 'package:map_awareness/utils/app_theme.dart';
 import 'package:map_awareness/utils/helpers.dart';
 
 /// Enum defining warning severity levels with associated metadata/colors.
+/// Colors are inlined to keep the domain model self-contained.
 enum WarningSeverity {
-  minor(1, 'Minor', 'Low risk', AppTheme.severityMinor, AppTheme.severityMinorDark),
-  moderate(2, 'Moderate', 'Be prepared', AppTheme.severityModerate, AppTheme.severityModerateDark),
-  severe(3, 'Severe', 'Take action', AppTheme.severitySevere, AppTheme.severitySevereDark),
-  extreme(4, 'Extreme', 'Immediate danger', AppTheme.severityExtreme, AppTheme.severityExtremeDark);
+  minor(1, 'Minor', 'Low risk', Color(0xFF42A5F5), Color(0xFF1E88E5)),
+  moderate(2, 'Moderate', 'Be prepared', Color(0xFFFFA000), Color(0xFFF57C00)),
+  severe(3, 'Severe', 'Take action', Color(0xFFFF6D00), Color(0xFFE65100)),
+  extreme(4, 'Extreme', 'Immediate danger', Color(0xFFE53935), Color(0xFFC62828));
 
   final int level;
   final String label;
@@ -19,6 +19,10 @@ enum WarningSeverity {
   final Color color;
   final Color darkColor;
   const WarningSeverity(this.level, this.label, this.hint, this.color, this.darkColor);
+
+  /// Returns the appropriate color for the current theme brightness.
+  Color colorIn(BuildContext context) => 
+      Theme.of(context).brightness == Brightness.dark ? darkColor : color;
 
   List<Color> get gradient => [color, darkColor];
 
@@ -75,6 +79,7 @@ class WarningItem implements Comparable<WarningItem> {
   final WarningCategory category;
   final String title;
   final String description;
+  final String? instruction;
   final DateTime? startTime;
   final DateTime? endTime;
   final double? latitude;
@@ -86,6 +91,7 @@ class WarningItem implements Comparable<WarningItem> {
     required this.category,
     required this.title,
     required this.description,
+    this.instruction,
     this.startTime,
     this.endTime,
     this.latitude,
@@ -110,6 +116,7 @@ class WarningItem implements Comparable<WarningItem> {
         category: WarningCategory.fromType('weather', w.event),
         title: w.headline.isNotEmpty ? w.headline : w.event,
         description: w.effectiveDescription,
+        instruction: w.instruction,
         startTime: w.start > 0 ? DateTime.fromMillisecondsSinceEpoch(w.start) : null,
         endTime: w.end > 0 ? DateTime.fromMillisecondsSinceEpoch(w.end) : null,
       );
@@ -121,6 +128,7 @@ class WarningItem implements Comparable<WarningItem> {
         category: WarningCategory.fromType(w.type, w.title),
         title: w.title,
         description: w.description,
+        instruction: w.payload?['instruction'] ?? w.payload?['recommendations'],
         startTime: w.sent.isNotEmpty ? DateTime.tryParse(w.sent) : null,
       );
 

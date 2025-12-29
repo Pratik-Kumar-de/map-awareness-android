@@ -23,11 +23,14 @@ class DwdWarningDto {
   @JsonKey(name: 'description')
   final String? description;
 
-  @JsonKey(name: 'start', defaultValue: 0)
-  final int start;
+    @JsonKey(name: 'instruction')
+    final String? instruction;
 
-  @JsonKey(name: 'end', defaultValue: 0)
-  final int end;
+    @JsonKey(name: 'start', defaultValue: 0)
+    final int start;
+
+    @JsonKey(name: 'end', defaultValue: 0)
+    final int end;
 
   DwdWarningDto({
     required this.type,
@@ -36,6 +39,7 @@ class DwdWarningDto {
     required this.headline,
     this.descriptionText,
     this.description,
+    this.instruction,
     required this.start,
     required this.end,
   });

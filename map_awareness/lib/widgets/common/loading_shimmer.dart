@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:map_awareness/utils/app_theme.dart';
+
 
 /// Wrapper widget applying a linear shimmer animation to its child for loading states.
 class LoadingShimmer extends StatelessWidget {
@@ -17,9 +17,10 @@ class LoadingShimmer extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!enabled) return child;
 
+    final cs = Theme.of(context).colorScheme;
     return Shimmer.fromColors(
-      baseColor: AppTheme.surfaceContainerHigh,
-      highlightColor: Colors.white,
+      baseColor: cs.surfaceContainerHigh,
+      highlightColor: cs.surface,
       child: IgnorePointer(child: child),
     );
   }
@@ -44,7 +45,7 @@ class ShimmerBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -63,7 +64,7 @@ class SkeletonCard extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(radius),
       ),
     );

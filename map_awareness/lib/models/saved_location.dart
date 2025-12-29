@@ -4,7 +4,6 @@ part 'saved_location.g.dart';
 
 /// Entity representing a saved geographic location with radius preference.
 @JsonSerializable()
-/// Entity representing a saved geographic location with radius preference.
 class SavedLocation {
   final String id;
   final String name;

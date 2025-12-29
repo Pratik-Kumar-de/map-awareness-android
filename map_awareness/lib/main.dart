@@ -10,11 +10,9 @@ import 'package:map_awareness/utils/app_theme.dart';
 /// Entry point: initializes bindings, loads theme, and launches the app.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // System bars handled by theme. Keeping status bar transparent.
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-    systemNavigationBarColor: Colors.white,
-    systemNavigationBarIconBrightness: Brightness.dark,
   ));
   
   // Loads saved theme preference.

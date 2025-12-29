@@ -47,12 +47,18 @@ class GeminiService {
       String weatherInfo = '';
       if (departureWeather != null) {
         weatherInfo += '\nDeparture weather ($start): ${departureWeather.icon} ${departureWeather.description}, ${departureWeather.temperature?.toStringAsFixed(1)}°C';
+        if (departureWeather.windSpeed != null) {
+          weatherInfo += ', Wind: ${departureWeather.windSpeed!.toStringAsFixed(0)} km/h';
+        }
         if (departureWeather.precipitation != null && departureWeather.precipitation! > 0) {
           weatherInfo += ', Rain: ${departureWeather.precipitation}mm';
         }
       }
       if (arrivalWeather != null) {
         weatherInfo += '\nArrival weather ($end): ${arrivalWeather.icon} ${arrivalWeather.description}, ${arrivalWeather.temperature?.toStringAsFixed(1)}°C';
+        if (arrivalWeather.windSpeed != null) {
+          weatherInfo += ', Wind: ${arrivalWeather.windSpeed!.toStringAsFixed(0)} km/h';
+        }
         if (arrivalWeather.precipitation != null && arrivalWeather.precipitation! > 0) {
           weatherInfo += ', Rain: ${arrivalWeather.precipitation}mm';
         }
@@ -64,8 +70,8 @@ Route overview:
 - ${roadworks.length} total roadworks ($blockedCount blocked/closed)
 - ${warnings.length} active warnings$weatherInfo
 
-Roadworks: ${roadworks.isEmpty ? 'None' : roadworks.take(5).map((r) => '${r.title} (${r.typeLabel}) - ${r.subtitle}\nDetails: ${r.descriptionText.replaceAll('\n', ' ')}\nImpact: Length ${r.length ?? 'N/A'}, Speed ${r.speedLimit ?? 'N/A'}, Width ${r.maxWidth ?? 'N/A'}\nStatus: ${r.timeInfo}').join(';\n')}
-Warnings: ${warnings.isEmpty ? 'None' : warnings.take(3).map((w) => '${w.title} - ${w.severity.label} (${w.category.name})\nSource: ${w.source}\nDetails: ${w.description.replaceAll('\n', ' ')}\nTime: ${w.relativeTimeInfo}').join(';\n')}
+Roadworks: ${roadworks.isEmpty ? 'None' : roadworks.take(5).map((r) => '${r.isBlocked ? '[BLOCKED] ' : ''}${r.title} (${r.typeLabel}) - ${r.subtitle}\nDetails: ${r.descriptionText.replaceAll('\n', ' ')}\nImpact: Length ${r.length ?? 'N/A'}, Speed ${r.speedLimit ?? 'N/A'}, Width ${r.maxWidth ?? 'N/A'}\nStatus: ${r.isFuture ? 'Future/Planned' : 'Active'} - ${r.timeInfo}').join(';\n')}
+Warnings: ${warnings.isEmpty ? 'None' : warnings.take(3).map((w) => '${w.title} - ${w.severity.label} (${w.category.name})\nSource: ${w.source}\nDetails: ${w.description.replaceAll('\n', ' ')}\n${w.instruction != null ? 'Instruction: ' + w.instruction!.replaceAll('\n', ' ') + '\n' : ''}Time: ${w.relativeTimeInfo}${w.latitude != null ? '\nLocation: ${w.latitude!.toStringAsFixed(3)}, ${w.longitude!.toStringAsFixed(3)}' : ''}').join(';\n')}
 
 Focus on: key hazards, weather impact on driving, recommended precautions, and overall trip outlook. Be concise and practical.''';
       
@@ -142,7 +148,7 @@ Current status:
 - Flood Risk: $floodInfo
 - Categories: ${warnings.map((w) => w.category.name).toSet().join(', ')}
 
-Active warnings: ${warnings.isEmpty ? 'None' : warnings.take(5).map((w) => '${w.title} (${w.severity.label}) - ${w.source}\nCategory: ${w.category.name}\nDetails: ${w.description.replaceAll('\n', ' ')}\nTime: ${w.relativeTimeInfo}').join(';\n')}
+Active warnings: ${warnings.isEmpty ? 'None' : warnings.take(5).map((w) => '${w.title} (${w.severity.label}) - ${w.source}\nCategory: ${w.category.name}\nDetails: ${w.description.replaceAll('\n', ' ')}\n${w.instruction != null ? 'Instruction: ' + w.instruction!.replaceAll('\n', ' ') + '\n' : ''}Time: ${w.relativeTimeInfo}').join(';\n')}
 
 Focus on: immediate safety concerns including weather conditions, air quality health effects, flood risks, and practical advice for residents/visitors.''';
       

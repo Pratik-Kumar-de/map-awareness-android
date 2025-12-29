@@ -5,7 +5,7 @@ import 'package:map_awareness/router/app_router.dart';
 import 'package:map_awareness/screens/routes/routes_screen.dart';
 import 'package:map_awareness/screens/warnings/warnings_screen.dart';
 import 'package:map_awareness/screens/map/map_screen.dart';
-import 'package:map_awareness/utils/app_theme.dart';
+
 
 /// Root layout widget interacting with AppRouter to manage bottom navigation and page switching.
 class AppShell extends ConsumerStatefulWidget {
@@ -75,15 +75,16 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final page = _pages[_currentPage];
 
     return Scaffold(
-      backgroundColor: AppTheme.surface,
+      backgroundColor: theme.colorScheme.surface,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            _buildHeader(context, page),
+            _buildHeader(context, theme, page),
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -107,37 +108,30 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   /// Builds the dynamic header containing page title, icon, and settings button.
-  Widget _buildHeader(BuildContext context, _PageConfig page) {
+  Widget _buildHeader(BuildContext context, ThemeData theme, _PageConfig page) {
+    final primary = theme.colorScheme.primary;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 12, 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primary.withValues(alpha: 0.06),
-            AppTheme.accent.withValues(alpha: 0.03),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 0.4, 1.0],
-        ),
+        color: primary.withValues(alpha: 0.05),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
+              color: primary,
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.3),
+                  color: primary.withValues(alpha: 0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: Icon(page.icon, color: Colors.white, size: 24),
+            child: Icon(page.icon, color: theme.colorScheme.onPrimary, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -146,7 +140,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               children: [
                 Text(
                   page.title,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.5,
                   ),
@@ -154,7 +148,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 const SizedBox(height: 2),
                 Text(
                   page.subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textMuted),
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -180,6 +174,8 @@ class _SettingsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return IconButton.filledTonal(
       onPressed: () {
         Haptics.select();
@@ -187,12 +183,11 @@ class _SettingsButton extends StatelessWidget {
       },
       icon: const Icon(Icons.settings_outlined, size: 22),
       style: IconButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: AppTheme.textSecondary,
+        backgroundColor: theme.colorScheme.surface,
+        foregroundColor: theme.colorScheme.onSurfaceVariant,
         padding: const EdgeInsets.all(12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.1),
+        elevation: 1,
       ),
     );
   }

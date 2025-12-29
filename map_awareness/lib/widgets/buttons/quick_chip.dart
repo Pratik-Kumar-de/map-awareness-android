@@ -23,11 +23,14 @@ class QuickChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppTheme.primary;
+    final theme = Theme.of(context);
+    final c = color ?? theme.colorScheme.primary;
+    final textCol = theme.colorScheme.onSurfaceVariant;
+    final borderCol = theme.colorScheme.surfaceContainerHigh;
 
     return Material(
-      color: isSelected ? c.withValues(alpha: 0.12) : Colors.white,
-      borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+      color: isSelected ? c.withValues(alpha: 0.12) : theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       child: InkWell(
         onTap: () {
           Haptics.select();
@@ -37,21 +40,21 @@ class QuickChip extends StatelessWidget {
           Haptics.heavy();
           onLongPress?.call();
         },
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            border: Border.all(color: isSelected ? c : AppTheme.surfaceContainerHigh, width: 1.5),
-            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+            border: Border.all(color: isSelected ? c : borderCol, width: 1.5),
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 16, color: isSelected ? c : AppTheme.textSecondary),
+                Icon(icon, size: 16, color: isSelected ? c : textCol),
                 const SizedBox(width: 6),
               ],
-              Text(label, style: TextStyle(color: isSelected ? c : AppTheme.textSecondary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, fontSize: 13)),
+              Text(label, style: TextStyle(color: isSelected ? c : textCol, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, fontSize: 13)),
             ],
           ),
         ),

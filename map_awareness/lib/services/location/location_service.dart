@@ -21,6 +21,7 @@ class LocationService {
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
       );
     } catch (_) {
+      // Graceful degradation: location optional.
       return null;
     }
   }

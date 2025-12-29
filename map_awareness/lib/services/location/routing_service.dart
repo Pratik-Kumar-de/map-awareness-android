@@ -12,10 +12,12 @@ class RouteResult {
   final List<AutobahnData> autobahnList;
   final List<PointLatLng> polylinePoints;
   final List<RouteAlternative> alternatives;
+  final RouteAlternative mainRoute;
 
   RouteResult({
     required this.autobahnList,
     required this.polylinePoints,
+    required this.mainRoute,
     this.alternatives = const [],
   });
 }
@@ -34,7 +36,7 @@ class RoutingService {
           'point': [start, end],
           'details': ['street_name', 'street_ref'],
           'profile': 'car',
-          'locale': 'de',
+          'locale': 'en',
           'calc_points': 'true',
           'alternative_route.max_paths': 3, // Max 3 alternatives
           'key': GeocodingService.apiKey,
@@ -43,39 +45,41 @@ class RoutingService {
       );
 
       final paths = res.data['paths'] as List;
-      final mainPath = paths[0];
-      
-      final polyline = PolylinePoints.decodePolyline(mainPath['points']);
       final autobahnNames = await _getAutobahnList();
-      final autobahns = <AutobahnData>[];
+      
+      // Parses all paths (main + alternatives) to extract segments.
+      final parsedPaths = _parseRoutePaths(paths, autobahnNames);
 
-      for (final ref in mainPath['details']['street_ref']) {
-        if (ref[2] != null) {
-          final name = (ref[2] as String).replaceAll(' ', '');
-          if (autobahnNames.contains(name)) {
-            final startPoint = polyline[ref[0]];
-            final endPoint = polyline[ref[1]];
-            autobahns.add(AutobahnData(
-              name: name,
-              startLat: startPoint.latitude,
-              startLng: startPoint.longitude,
-              endLat: endPoint.latitude,
-              endLng: endPoint.longitude,
-            ));
-          }
-        }
-      }
+      final main = parsedPaths[0];
+      
+      // Creates alternatives list.
+      final alternatives = parsedPaths.skip(1).map((p) => RouteAlternative.fromJson(
+        p['data'], 
+        segments: p['autobahns'] as List<AutobahnData>,
+      )).toList();
 
-      // Parses alternative routes.
-      final alternatives = paths.skip(1).map((path) => RouteAlternative.fromJson(path)).toList();
+      final mainRoute = RouteAlternative.fromJson(
+        main['data'], 
+        segments: main['autobahns'] as List<AutobahnData>,
+      );
 
       return RouteResult(
-        autobahnList: autobahns,
-        polylinePoints: polyline,
+        autobahnList: main['autobahns'] as List<AutobahnData>,
+        polylinePoints: main['polyline'] as List<PointLatLng>,
         alternatives: alternatives,
+        mainRoute: mainRoute,
       );
     } on DioException {
-      return RouteResult(autobahnList: [], polylinePoints: []);
+      return RouteResult(
+        autobahnList: [], 
+        polylinePoints: [],
+        mainRoute: RouteAlternative(
+          distance: 0, 
+          time: 0, 
+          bbox: [], 
+          points: '',
+        ),
+      );
     }
   }
 
@@ -88,5 +92,41 @@ class RoutingService {
     } on DioException {
       return {};
     }
+  }
+  /// Parses raw route paths to extract decoded polylines and autobahn segments.
+  static List<Map<String, dynamic>> _parseRoutePaths(List paths, Set<String> autobahnNames) {
+    final parsedPaths = <Map<String, dynamic>>[];
+
+    for (final path in paths) {
+      final polyline = PolylinePoints.decodePolyline(path['points']);
+      final autobahns = <AutobahnData>[];
+
+      final details = path['details'] as Map<String, dynamic>?;
+      if (details != null && details['street_ref'] != null) {
+        for (final ref in details['street_ref']) {
+          if (ref[2] != null) {
+            final name = (ref[2] as String).replaceAll(' ', '');
+            if (autobahnNames.contains(name)) {
+              final startPoint = polyline[ref[0]];
+              final endPoint = polyline[ref[1]];
+              autobahns.add(AutobahnData(
+                name: name,
+                startLat: startPoint.latitude,
+                startLng: startPoint.longitude,
+                endLat: endPoint.latitude,
+                endLng: endPoint.longitude,
+              ));
+            }
+          }
+        }
+      }
+      
+      parsedPaths.add({
+        'polyline': polyline,
+        'autobahns': autobahns,
+        'data': path,
+      });
+    }
+    return parsedPaths;
   }
 }

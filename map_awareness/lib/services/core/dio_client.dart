@@ -52,4 +52,42 @@ class DioClient {
   static Options noCache() => cacheOptions
       .copyWith(policy: CachePolicy.refresh)
       .toOptions();
+
+  /// Safely fetches a single object.
+  static Future<T?> safeGet<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    required T Function(Map<String, dynamic>) fromJson,
+    String? dataKey,
+  }) async {
+    try {
+      final res = await instance.get(path, queryParameters: queryParameters, options: options);
+      final data = dataKey != null ? res.data[dataKey] : res.data;
+      if (data == null) return null;
+      return fromJson(data as Map<String, dynamic>);
+    } catch (_) {
+      // Graceful degradation: callers handle null.
+      return null;
+    }
+  }
+
+  /// Safely fetches a list of objects.
+  static Future<List<T>> safeGetList<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    required T Function(Map<String, dynamic>) fromJson,
+    String? listKey,
+  }) async {
+    try {
+      final res = await instance.get(path, queryParameters: queryParameters, options: options);
+      final data = listKey != null ? res.data[listKey] : res.data;
+      if (data is! List) return [];
+      return data.map((e) => fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      // Graceful degradation: callers handle empty list.
+      return [];
+    }
+  }
 }

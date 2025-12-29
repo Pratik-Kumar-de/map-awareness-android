@@ -26,13 +26,16 @@ class PremiumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final backgroundColor = gradient == null ? (color ?? theme.colorScheme.surface) : null;
+
     return Container(
       margin: margin,
       decoration: BoxDecoration(
-        color: gradient == null ? (color ?? Colors.white) : null,
+        color: backgroundColor,
         gradient: gradient,
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: shadows ?? AppTheme.cardShadow,
+        boxShadow: shadows ?? AppTheme.cardShadow(context),
       ),
       child: Material(
         color: Colors.transparent,

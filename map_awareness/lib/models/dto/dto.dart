@@ -1,4 +1,5 @@
 export 'autobahn_service.dart';
+export 'autobahn_item.dart';
 export 'dwd_warning.dart';
 export 'geo_coordinate.dart';
 export 'nina_warning.dart';

@@ -212,7 +212,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
                 if (state.warnings.isNotEmpty)
                   StatsRow(items: [
                     StatItem(label: 'Total', value: '${state.warnings.length}'),
-                    StatItem(label: 'Active', value: '${state.warnings.where((w) => w.isActive).length}', color: AppTheme.success),
+                    StatItem(label: 'Active', value: '${state.warnings.where((w) => w.isActive).length}', color: Colors.green),
                     StatItem(label: 'In Range', value: '${filtered.length}', color: AppTheme.primary),
                   ]),
                 if (state.warnings.isNotEmpty) const SizedBox(height: 20),
@@ -278,7 +278,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
               ]),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(gradient: AppTheme.primaryGradient, borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary]), borderRadius: BorderRadius.circular(20)),
                 child: Text('${state.radiusKm.toInt()} km', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
               ),
             ],
@@ -352,12 +352,12 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                gradient: state.hasLocation ? AppTheme.primaryGradient : null,
-                color: !state.hasLocation ? AppTheme.surfaceContainerHigh : null,
+                gradient: state.hasLocation ? LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.tertiary]) : null,
+                color: !state.hasLocation ? Theme.of(context).colorScheme.surfaceContainerHigh : null,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: state.hasLocation ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))] : null,
               ),
-              child: Icon(Icons.map_rounded, color: state.hasLocation ? Colors.white : AppTheme.textMuted, size: 22),
+              child: Icon(Icons.map_rounded, color: state.hasLocation ? Colors.white : Theme.of(context).colorScheme.outline, size: 22),
             ),
           ),
         ),
@@ -368,7 +368,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
   /// Builds a card displaying environmental info like flood risk or air quality.
   Widget _buildInfoCard(WarningItem item) {
     final isFlood = item.category == WarningCategory.flood;
-    final color = isFlood ? AppTheme.info : AppTheme.success;
+    final color = isFlood ? Colors.blue : Colors.green;
     
     return Container(
       constraints: const BoxConstraints(minHeight: 100),
@@ -396,7 +396,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
               children: [
                 Text(item.title, style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 15)),
                 const SizedBox(height: 4),
-                Text(item.description, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary, height: 1.4), maxLines: 3, overflow: TextOverflow.ellipsis),
+                Text(item.description, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4), maxLines: 3, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
@@ -417,7 +417,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [AppTheme.accent, AppTheme.accentLight]),
+              gradient: LinearGradient(colors: [AppTheme.accent, AppTheme.accent.withValues(alpha: 0.7)]),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(weather.icon, style: const TextStyle(fontSize: 24)),
@@ -427,7 +427,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Current Weather', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                Text('Current Weather', style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 12)),
                 const SizedBox(height: 2),
                 Text(
                   '${weather.temperature?.toStringAsFixed(1) ?? '--'}°C · ${weather.description}',

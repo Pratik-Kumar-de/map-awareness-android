@@ -7,19 +7,19 @@ class ToastService {
   ToastService._();
 
   static void success(BuildContext context, String message) {
-    _show(context, message, ToastificationType.success, AppTheme.success);
+    _show(context, message, ToastificationType.success, Colors.green);
   }
 
   static void error(BuildContext context, String message) {
-    _show(context, message, ToastificationType.error, AppTheme.error);
+    _show(context, message, ToastificationType.error, Theme.of(context).colorScheme.error);
   }
 
   static void warning(BuildContext context, String message) {
-    _show(context, message, ToastificationType.warning, AppTheme.warning);
+    _show(context, message, ToastificationType.warning, Colors.orange);
   }
 
   static void info(BuildContext context, String message) {
-    _show(context, message, ToastificationType.info, AppTheme.info);
+    _show(context, message, ToastificationType.info, Theme.of(context).colorScheme.primary);
   }
 
   /// Internal helper to show a toast with specific type and color configuration.
@@ -33,7 +33,7 @@ class ToastService {
       alignment: Alignment.bottomCenter,
       primaryColor: color,
       borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-      boxShadow: AppTheme.cardShadow,
+      boxShadow: AppTheme.cardShadow(context),
     );
   }
 }

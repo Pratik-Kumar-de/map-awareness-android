@@ -157,6 +157,7 @@ class WarningNotifier extends StateNotifier<WarningState> {
       );
       state = state.copyWith(aiSummary: summary, isSummaryLoading: false);
     } catch (_) {
+      // Graceful degradation: summary is optional.
       state = state.copyWith(isSummaryLoading: false);
     }
   }

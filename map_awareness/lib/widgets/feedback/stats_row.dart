@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:map_awareness/utils/app_theme.dart';
+
 import 'package:map_awareness/widgets/common/premium_card.dart';
 
 /// Widget for displaying a row of statistic items (value + label).
@@ -19,13 +19,14 @@ class StatsRow extends StatelessWidget {
 
   /// Builds an individual statistic item with value and label.
   Widget _buildStat(BuildContext context, StatItem item) {
+    final theme = Theme.of(context);
     return Column(
       children: [
         Text(
           item.value,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w700,
-            color: item.color ?? AppTheme.textPrimary,
+            color: item.color ?? theme.colorScheme.onSurface,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -33,7 +34,7 @@ class StatsRow extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           item.label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textMuted),
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),

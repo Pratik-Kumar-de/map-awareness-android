@@ -8,12 +8,16 @@ const Map<String, String> _arsLookup = {
   
   // Bavaria
   'munich': '09162000',
+  'muenchen': '09162000',
   'nuremberg': '09564000',
+  'nuernberg': '09564000',
   'augsburg': '09761000',
   'regensburg': '09362000',
   'ingolstadt': '09161000',
   'wurzburg': '09663000',
+  'wuerzburg': '09663000',
   'furth': '09563000',
+  'fuerth': '09563000',
   'erlangen': '09562000',
   'bamberg': '09461000',
   'bayreuth': '09462000',
@@ -38,6 +42,7 @@ const Map<String, String> _arsLookup = {
   
   // North Rhine-Westphalia (NRW)
   'cologne': '05315000',
+  'koeln': '05315000',
   'duesseldorf': '05111000',
   'dortmund': '05913000',
   'essen': '05113000',
@@ -73,6 +78,7 @@ const Map<String, String> _arsLookup = {
   
   // Lower Saxony
   'hanover': '03241000',
+  'hannover': '03241000',
   'braunschweig': '03101000',
   'oldenburg': '03403000',
   'osnabrueck': '03404000',

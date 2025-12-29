@@ -14,8 +14,7 @@ import 'package:map_awareness/widgets/common/map_details_sheet.dart';
 import 'package:map_awareness/widgets/common/glass_container.dart';
 import 'package:map_awareness/widgets/common/map_marker.dart';
 import 'package:map_awareness/utils/helpers.dart';
-import 'package:map_awareness/widgets/buttons/gradient_button.dart';
-import 'package:map_awareness/widgets/buttons/secondary_button.dart';
+import 'package:map_awareness/widgets/cards/route_comparison_sheet.dart';
 
 
 /// Screen displaying the interactive map with route polylines and event markers.
@@ -35,34 +34,15 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
   
   String? _activePopupKey;
   bool _mapReady = false;
+  LatLng? _tempStartPoint;
+  
+  // Route creation mode: 0 = off, 1 = picking start, 2 = picking destination.
+  int _routeStep = 0;
 
   @override
   bool get wantKeepAlive => true;
 
-  @override
-  void initState() {
-    super.initState();
-    // Adapts map to provider changes.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _setupListeners());
-  }
 
-  /// Configures Riverpod listeners to reactively adjust map camera when route or location state changes.
-  void _setupListeners() {
-    // Fits map to content.
-    ref.listenManual(routeProvider.select((s) => s.polyline), (_, polyline) {
-      if (_mapReady && polyline.isNotEmpty) {
-        _fitToRoute(polyline);
-      }
-    });
-    
-    ref.listenManual(warningProvider.select((s) => s.center), (_, center) {
-      final hasRoute = ref.read(routeProvider).hasRoute;
-      if (_mapReady && center != null && !hasRoute) {
-        final radius = ref.read(warningProvider).radiusKm;
-        _fitToRadius(center, radius);
-      }
-    });
-  }
 
   /// Callback executed when the map has finished initializing.
   void _onMapReady() {
@@ -124,6 +104,24 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    
+    // Listeners for map camera updates.
+    ref.listen(routeProvider.select((s) => s.polyline), (_, polyline) {
+      if (_mapReady && polyline.isNotEmpty) {
+        _fitToRoute(polyline);
+      }
+    });
+
+    ref.listen(warningProvider.select((s) => s.center), (_, center) {
+      // In build, we can use read or watch. Listen callback is triggered on change.
+      // We use ref.read for other providers to avoid re-triggering just for reading state inside callback.
+      final hasRoute = ref.read(routeProvider).hasRoute;
+      if (_mapReady && center != null && !hasRoute) {
+        final radius = ref.read(warningProvider).radiusKm;
+        _fitToRadius(center, radius);
+      }
+    });
+
     final routeState = ref.watch(routeProvider);
     final warningState = ref.watch(warningProvider);
     final cs = Theme.of(context).colorScheme;
@@ -144,15 +142,16 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
               onMapReady: _onMapReady,
               interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
                  onTap: (tapPos, point) async {
-                   Haptics.select();
+                   // Route creation mode: handles step-by-step.
+                   if (_routeStep > 0) {
+                     await _handleRouteTap(point);
+                     return;
+                   }
                    
-                  // Dismisses active popup.
+                   // Dismisses active popup.
                    if (mounted && _activePopupKey != null && Navigator.of(context).canPop()) {
                      Navigator.of(context).pop();
                      _activePopupKey = null;
-                   } else {
-                    // Shows point selection.
-                     _showPointSelectionSheet(point);
                    }
                  },
             ),
@@ -168,34 +167,38 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
                     point: center,
                     radius: warningState.radiusKm * 1000,
                     useRadiusInMeter: true,
-                    color: cs.primary.withValues(alpha: 0.15),
-                    borderColor: cs.primary,
+                    color: AppTheme.primary.withValues(alpha: 0.15),
+                    borderColor: AppTheme.primary,
                     borderStrokeWidth: 2.5,
                   ),
                 ]),
               
-              // Alternative Routes (Greyed out)
-              if (hasRoute && routeState.alternatives.isNotEmpty)
-                PolylineLayer(polylines: [
-                  for (final alt in routeState.alternatives)
-                    Polyline(
-                      points: alt.coordinates,
-                      color: cs.onSurface.withValues(alpha: 0.3),
-                      strokeWidth: 4,
-                      borderColor: Colors.white.withValues(alpha: 0.4),
-                      borderStrokeWidth: 1,
-                      strokeCap: StrokeCap.round,
-                      strokeJoin: StrokeJoin.round,
-                    ),
-                ]),
+              // Alternative Routes (tappable).
+              if (hasRoute && routeState.availableRoutes.length > 1)
+                GestureDetector(
+                  onTapDown: (_) => _showRouteComparison(),
+                  child: PolylineLayer(polylines: [
+                    for (var i = 0; i < routeState.availableRoutes.length; i++)
+                      if (i != routeState.selectedRouteIndex)
+                        Polyline(
+                          points: routeState.availableRoutes[i].coordinates,
+                          color: Colors.black.withValues(alpha: 0.4),
+                          strokeWidth: 8, // Wider for easier tap.
+                          borderColor: Colors.white.withValues(alpha: 0.5),
+                          borderStrokeWidth: 2,
+                          strokeCap: StrokeCap.round,
+                          strokeJoin: StrokeJoin.round,
+                        ),
+                  ]),
+                ),
 
               if (hasRoute)
                 PolylineLayer(polylines: [
                   Polyline(
                     points: routeState.polyline,
-                    color: cs.primary,
+                    color: AppTheme.primary,
                     strokeWidth: 5,
-                    borderColor: cs.onSurface.withValues(alpha: 0.6),
+                    borderColor: Colors.black.withValues(alpha: 0.6),
                     borderStrokeWidth: 1,
                     strokeCap: StrokeCap.round,
                     strokeJoin: StrokeJoin.round,
@@ -216,49 +219,51 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
             ),
           ),
 
-          // No-route banner.
-          if (!hasRoute && !isRadiusMode)
+          // Route creation instruction pill.
+          if (_routeStep > 0)
             Positioned(
-              top: AppTheme.spacingMd,
-              left: AppTheme.spacingMd,
-              right: AppTheme.spacingMd,
-              child: GlassContainer(
-                color: cs.surface.withValues(alpha: 0.85),
-                borderColor: cs.outline.withValues(alpha: 0.2),
-                child: Row(children: [
-                  Icon(Icons.info_outline, color: cs.primary, size: 20),
-                  const SizedBox(width: AppTheme.spacingSm),
-                  Expanded(
-                    child: Text(
-                      'Calculate a route or search a location to view data',
-                      style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.8)),
+              top: MediaQuery.of(context).padding.top + AppTheme.spacingMd,
+              left: 0,
+              right: 0,
+              child: _RouteInstructionPill(step: _routeStep),
+            ),
+
+          // Top right controls: Layer toggles and Route Creation button.
+          Positioned(
+            top: MediaQuery.of(context).padding.top + AppTheme.spacingMd,
+            right: AppTheme.spacingMd,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (hasRoute) ...[
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    _LayerChip(
+                      label: 'Parking',
+                      icon: Icons.local_parking,
+                      active: routeState.showParking,
+                      onTap: () => ref.read(routeProvider.notifier).toggleParking(),
                     ),
-                  ),
-                ]),
-              ),
-            ),
-            
-          // Layer toggles.
-          if (hasRoute)
-            Positioned(
-              top: AppTheme.spacingMd,
-              right: AppTheme.spacingMd,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                _LayerChip(
-                  label: 'Parking',
-                  icon: Icons.local_parking,
-                  active: routeState.showParking,
-                  onTap: () => ref.read(routeProvider.notifier).toggleParking(),
+                    const SizedBox(width: 8),
+                    _LayerChip(
+                      label: 'EV Charging',
+                      icon: Icons.ev_station,
+                      active: routeState.showCharging,
+                      onTap: () => ref.read(routeProvider.notifier).toggleCharging(),
+                    ),
+                  ]),
+                  if (_routeStep == 0) const SizedBox(height: 8),
+                ],
+                // Always show route creation button unless in step > 0 (it has its own UI) logic? 
+                // Actually user wants it "like the other buttons". 
+                // We keep it always visible. If _routeStep > 0, it becomes a "Cancel" button.
+                _RouteCreationButton(
+                  isActive: _routeStep > 0,
+                  onTap: _routeStep > 0 ? _cancelRouteCreation : _startRouteCreation,
                 ),
-                const SizedBox(width: AppTheme.spacingSm),
-                _LayerChip(
-                  label: 'EV Charging',
-                  icon: Icons.ev_station,
-                  active: routeState.showCharging,
-                  onTap: () => ref.read(routeProvider.notifier).toggleCharging(),
-                ),
-              ]),
+              ],
             ),
+          ),
             
            // Handles left-edge swipe.
            Positioned(
@@ -281,17 +286,23 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
 
   /// Aggregates and builds all map markers (route, events, warnings) based on current state.
   List<Marker> _buildMarkers(RouteState routeState, WarningState warningState, bool hasRoute, bool isRadiusMode) {
+    final cs = Theme.of(context).colorScheme;
     final markers = <Marker>[];
+
+    // Temporary start marker (during creation).
+    if (_tempStartPoint != null) {
+      markers.add(_marker(_tempStartPoint!, const MapMarker.small(icon: Icons.circle, color: Colors.green)));
+    }
 
     // Route markers.
     if (hasRoute && routeState.polyline.isNotEmpty) {
-      markers.add(_marker(routeState.polyline.first, const MapMarker.small(icon: Icons.circle, color: AppTheme.success)));
-      markers.add(_marker(routeState.polyline.last, const MapMarker.small(icon: Icons.flag_rounded, color: AppTheme.error)));
+      markers.add(_marker(routeState.polyline.first, const MapMarker.small(icon: Icons.circle, color: Colors.green)));
+      markers.add(_marker(routeState.polyline.last, MapMarker.small(icon: Icons.flag_rounded, color: AppTheme.error)));
     }
 
     // Radius marker.
     if (isRadiusMode && warningState.center != null) {
-      markers.add(_marker(warningState.center!, const MapMarker.small(icon: Icons.my_location, color: AppTheme.primary)));
+      markers.add(_marker(warningState.center!, MapMarker.small(icon: Icons.my_location, color: AppTheme.primary)));
     }
 
     // Charging stations.
@@ -301,7 +312,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
         id: (i) => 'cs_${i.identifier}',
         location: (i) => i.latitude != null && i.longitude != null ? LatLng(i.latitude!, i.longitude!) : null,
         icon: (_) => Icons.ev_station,
-        color: (_) => AppTheme.success.withValues(alpha: 0.85),
+        color: (_) => Colors.green.withValues(alpha: 0.85),
         sheet: _chargingSheet,
         size: 24,
       ));
@@ -314,20 +325,20 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
         id: (i) => 'pk_${i.identifier}',
         location: (i) => i.latitude != null && i.longitude != null ? LatLng(i.latitude!, i.longitude!) : null,
         icon: (_) => Icons.local_parking,
-        color: (_) => AppTheme.info.withValues(alpha: 0.8),
+        color: (_) => Colors.blue.withValues(alpha: 0.8),
         sheet: _parkingSheet,
         size: 22,
       ));
     }
 
-    // Roadworks.
+    // Roadworks with theme-aware colors.
     if (routeState.roadworks.isNotEmpty) {
       markers.addAll(_entityMarkers(
         items: routeState.roadworks.expand((l) => l),
         id: (i) => 'rw_${i.identifier}',
         location: (i) => i.latitude != null && i.longitude != null ? LatLng(i.latitude!, i.longitude!) : null,
         icon: (i) => i.isBlocked ? Icons.block : Icons.construction,
-        color: (i) => (i.isBlocked ? AppTheme.error : AppTheme.warning).withValues(alpha: 0.85),
+        color: (i) => (i.isBlocked ? AppTheme.error : const Color(0xFFF57C00)).withValues(alpha: 0.85),
         sheet: _roadworkSheet,
       ));
     }
@@ -380,7 +391,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
   /// Builds a details sheet for a charging station.
   Widget _chargingSheet(ChargingStationDto cs) => MapDetailsSheet(
     icon: Icons.ev_station,
-    color: AppTheme.success,
+    color: Colors.green,
     title: cs.title,
     subtitle: cs.subtitle,
     description: cs.descriptionText,
@@ -389,15 +400,15 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
   /// Builds a details sheet for a parking area.
   Widget _parkingSheet(ParkingDto p) => MapDetailsSheet(
     icon: Icons.local_parking,
-    color: AppTheme.info,
+    color: Colors.blue,
     title: p.title,
     subtitle: p.subtitle,
     description: p.descriptionText,
     additionalChips: p.isLorryParking ? [
       Chip(
-        avatar: const Icon(Icons.local_shipping, size: 16, color: AppTheme.info),
+        avatar: const Icon(Icons.local_shipping, size: 16, color: Colors.blue),
         label: const Text('Lorry parking'),
-        backgroundColor: AppTheme.info.withValues(alpha: 0.1),
+        backgroundColor: Colors.blue.withValues(alpha: 0.1),
         side: BorderSide.none,
       ),
     ] : null,
@@ -405,7 +416,8 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
 
   /// Builds a details sheet for a roadwork event.
   Widget _roadworkSheet(RoadworkDto rw) {
-    final c = rw.isBlocked ? AppTheme.error : AppTheme.warning;
+    final cs = Theme.of(context).colorScheme;
+    final c = rw.isBlocked ? cs.error : cs.tertiary;
     return MapDetailsSheet(
       icon: rw.isBlocked ? Icons.block : Icons.construction,
       color: c,
@@ -441,96 +453,82 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
     ],
   );
 
-  void _showPointSelectionSheet(LatLng point) async {
+  /// Starts route creation mode.
+  void _startRouteCreation() {
+    Haptics.medium();
+    setState(() {
+      _routeStep = 1;
+      _tempStartPoint = null;
+    });
+    // Clears any previous input.
+    ref.read(routeInputProvider.notifier).setStart('');
+    ref.read(routeInputProvider.notifier).setEnd('');
+  }
+
+  
+  /// Cancels route creation mode.
+  void _cancelRouteCreation() {
     Haptics.light();
+    setState(() {
+      _routeStep = 0;
+      _tempStartPoint = null;
+    });
+  }
+  
+  /// Handles map tap during route creation.
+  Future<void> _handleRouteTap(LatLng point) async {
+    Haptics.select();
     
-    // Awaits geocoding result.
-    String? address;
+    // Uses exact coordinates for routing precision.
+    final coordString = '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+    
+    // Tries to get a human-readable name just for user feedback (Toast).
+    String displayName = coordString;
     try {
-      address = await GeocodingService.getPlaceName(point.latitude, point.longitude);
+      final name = await GeocodingService.getPlaceName(point.latitude, point.longitude);
+      if (name != null) displayName = name;
     } catch (_) {}
     
-    address ??= '${point.latitude.toStringAsFixed(4)}, ${point.longitude.toStringAsFixed(4)}';
-
     if (!mounted) return;
-
-    _dismissAndShow('loc_${point.hashCode}', _LocationActionSheet(address: address, point: point));
+    
+    if (_routeStep == 1) {
+      // First tap: set start.
+      Haptics.medium();
+      ref.read(routeInputProvider.notifier).setStart(displayName);
+      setState(() {
+        _routeStep = 2;
+        _tempStartPoint = point;
+      });
+      ToastService.info(context, 'Start: $displayName');
+    } else if (_routeStep == 2) {
+      // Second tap: set destination and calculate.
+      Haptics.heavy();
+      ref.read(routeInputProvider.notifier).setEnd(displayName);
+      setState(() {
+        _routeStep = 0;
+        _tempStartPoint = null;
+      });
+      
+      // Auto-calculate route.
+      final success = await ref.read(routeProvider.notifier).calculate(
+        ref.read(routeInputProvider).start,
+        displayName,
+      );
+      
+      if (mounted) {
+        if (success) {
+          ToastService.success(context, 'Route calculated!');
+        } else {
+          ToastService.error(context, 'Route failed');
+        }
+      }
+    }
   }
-}
-
-/// Component for selecting start or destination for a specific map point.
-class _LocationActionSheet extends ConsumerWidget {
-  final String address;
-  final LatLng point;
   
-  const _LocationActionSheet({required this.address, required this.point});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return GlassContainer(
-      padding: const EdgeInsets.all(20),
-      borderRadius: 20,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                child: Icon(Icons.location_on_rounded, color: AppTheme.primary, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Selected Location', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 2),
-                    Text(address, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded, color: AppTheme.textSecondary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: SecondaryButton(
-                  label: 'Start',
-                  icon: Icons.trip_origin,
-                  onPressed: () {
-                    Haptics.medium();
-                    ref.read(routeInputProvider.notifier).setStart(address);
-                    Navigator.pop(context);
-                    ToastService.success(context, 'Start point set');
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GradientButton(
-                  label: 'Destination',
-                  icon: Icons.flag_rounded,
-                  onPressed: () {
-                    Haptics.medium();
-                    ref.read(routeInputProvider.notifier).setEnd(address);
-                    Navigator.pop(context);
-                    ToastService.success(context, 'Destination set');
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  /// Shows route comparison sheet.
+  void _showRouteComparison() {
+    Haptics.medium();
+    showAppSheet(context, child: const RouteComparisonSheet());
   }
 }
 
@@ -545,12 +543,10 @@ class _MapControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Uses GlassContainer default theme-aware colors.
     return GlassContainer(
       padding: EdgeInsets.zero,
-      borderRadius: 10,
-      blur: 6,
-      color: Colors.white.withValues(alpha: 0.85),
-      borderColor: Colors.black.withValues(alpha: 0.08),
+      // Default radius is 12 (AppTheme.radiusSm) and blur is 8, matching other controls.
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         _ControlButton(icon: Icons.add, onTap: onZoomIn),
         _Divider(),
@@ -577,10 +573,9 @@ class _ControlButton extends StatelessWidget {
           Haptics.select();
           onTap();
         },
-        borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(10),
-          child: Icon(icon, size: 20, color: AppTheme.textSecondary),
+          child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ),
     );
@@ -590,7 +585,10 @@ class _ControlButton extends StatelessWidget {
 /// Simple vertical divider for control buttons.
 class _Divider extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Container(height: 1, color: Colors.black.withValues(alpha: 0.08));
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(height: 1, color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08));
+  }
 }
 
 // Layer toggle chip.
@@ -605,18 +603,73 @@ class _LayerChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return GlassContainer(
       onTap: onTap,
-      borderRadius: 20,
-      blur: 6,
+      borderRadius: AppTheme.radiusLg,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      color: active ? AppTheme.primary.withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.85),
-      borderColor: active ? AppTheme.primary : Colors.black.withValues(alpha: 0.1),
+      color: active ? cs.primary.withValues(alpha: 0.9) : null,
+      borderColor: active ? cs.primary : null,
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 16, color: active ? Colors.white : AppTheme.textSecondary),
+        Icon(icon, size: 16, color: active ? cs.onPrimary : cs.onSurfaceVariant),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: active ? Colors.white : AppTheme.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: active ? cs.onPrimary : cs.onSurfaceVariant)),
       ]),
+    );
+  }
+}
+
+/// Floating button to toggle route creation mode.
+class _RouteCreationButton extends StatelessWidget {
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _RouteCreationButton({required this.isActive, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final color = isActive ? cs.error : cs.primary;
+    return GlassContainer(
+      // Default radius (12) and blur (8) match _MapControls.
+      padding: EdgeInsets.zero,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(
+              isActive ? Icons.close : Icons.add_road, 
+              size: 20, 
+              color: color
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Instruction pill shown during route creation.
+class _RouteInstructionPill extends StatelessWidget {
+  final int step;
+
+  const _RouteInstructionPill({required this.step});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: GlassContainer(
+        borderRadius: AppTheme.radiusLg,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        color: cs.primaryContainer.withValues(alpha: 0.9),
+        child: Text(
+          step == 1 ? 'Tap start location' : 'Tap destination',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onPrimaryContainer),
+        ),
+      ),
     );
   }
 }

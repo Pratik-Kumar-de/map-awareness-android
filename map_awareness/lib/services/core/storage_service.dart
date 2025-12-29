@@ -62,7 +62,7 @@ class StorageService {
     try {
       return await _readList(_routesKey, SavedRoute.fromJson);
     } catch (_) {
-      // Skips corrupted entries.
+      // Skips corrupted entries, return empty.
       return [];
     }
   }

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:map_awareness/utils/helpers.dart';
+
 import 'package:map_awareness/models/warning_item.dart';
 
-import 'package:map_awareness/utils/app_theme.dart';
+
+import 'package:map_awareness/widgets/common/premium_expansion_tile.dart';
 
 /// Widget for displaying a warning item with expandable details.
 class WarningCard extends StatelessWidget {
@@ -14,33 +15,29 @@ class WarningCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = warning.severity.gradient;
+    final severityColor = warning.severity.colorIn(context);
+    final colors = [severityColor, severityColor.withValues(alpha: 0.8)];
 
     return Semantics(
       excludeSemantics: true,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          boxShadow: AppTheme.cardShadow,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: ExpansionTile(
-        key: PageStorageKey<String>('warning_${warning.title.hashCode}'),
+      child: PremiumExpansionTile(
+        expansionKey: PageStorageKey<String>('warning_${warning.title.hashCode}'),
         tilePadding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        initiallyExpanded: false,
-        shape: const Border(),
-        collapsedShape: const Border(),
         leading: _SeverityIcon(colors: colors, category: warning.category),
-        title: Text(warning.title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
+        title: Text(
+          warning.title, 
+          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700), 
+          maxLines: 2, 
+          overflow: TextOverflow.ellipsis,
+        ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 10),
           child: Wrap(spacing: 8, runSpacing: 6, children: [
             Chip(
-              avatar: Icon(Icons.schedule_rounded, size: 16, color: warning.severity.color),
-              label: Text(warning.relativeTimeInfo, style: TextStyle(color: warning.severity.color, fontSize: 11, fontWeight: FontWeight.w600)),
-              backgroundColor: warning.severity.color.withValues(alpha: 0.1),
+              avatar: Icon(Icons.schedule_rounded, size: 16, color: severityColor),
+              label: Text(warning.relativeTimeInfo, style: TextStyle(color: severityColor, fontSize: 11, fontWeight: FontWeight.w600)),
+              backgroundColor: severityColor.withValues(alpha: 0.1),
               side: BorderSide.none,
               shape: const StadiumBorder(),
               visualDensity: VisualDensity.compact,
@@ -48,9 +45,16 @@ class WarningCard extends StatelessWidget {
               labelPadding: const EdgeInsets.only(right: 8),
             ),
             Chip(
-              avatar: Icon(warning.source == 'DWD' ? Icons.cloud_rounded : Icons.shield_rounded, size: 16, color: warning.source == 'DWD' ? AppTheme.info : AppTheme.civil),
-              label: Text(warning.source, style: TextStyle(color: warning.source == 'DWD' ? AppTheme.info : AppTheme.civil, fontSize: 11, fontWeight: FontWeight.w600)),
-              backgroundColor: (warning.source == 'DWD' ? AppTheme.info : AppTheme.civil).withValues(alpha: 0.1),
+              avatar: Icon(
+                warning.source == 'DWD' ? Icons.cloud_rounded : Icons.shield_rounded, 
+                size: 16, 
+                color: theme.colorScheme.primary,
+              ),
+              label: Text(
+                warning.source, 
+                style: TextStyle(color: theme.colorScheme.primary, fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
               side: BorderSide.none,
               shape: const StadiumBorder(),
               visualDensity: VisualDensity.compact,
@@ -66,13 +70,14 @@ class WarningCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [BoxShadow(color: colors.first.withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 2))],
           ),
-          child: Text(warning.severity.label.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+          child: Text(
+            warning.severity.label.toUpperCase(), 
+            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+          ),
         ),
-        onExpansionChanged: (_) => Haptics.select(),
         children: [_ExpandedContent(warning: warning, colors: colors)],
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -123,9 +128,9 @@ class _ExpandedContent extends StatelessWidget {
         const Divider(height: 24),
 
         Row(children: [
-          Icon(Icons.access_time_filled_rounded, size: 18, color: AppTheme.textSecondary),
+          Icon(Icons.access_time_filled_rounded, size: 18, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 10),
-          Text('Duration: ', style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary)),
+          Text('Duration: ', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           Expanded(child: Text(warning.formattedTimeRange, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
         ]),
         const SizedBox(height: 12),
@@ -135,8 +140,15 @@ class _ExpandedContent extends StatelessWidget {
 
         Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: AppTheme.surfaceContainer, borderRadius: BorderRadius.circular(12), border: Border(left: BorderSide(color: colors.first, width: 4))),
-          child: Text(warning.description.isNotEmpty ? warning.description : 'No additional details available.', style: theme.textTheme.bodyMedium?.copyWith(height: 1.6)),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerLow, 
+            borderRadius: BorderRadius.circular(12), 
+            border: Border(left: BorderSide(color: colors.first, width: 4)),
+          ),
+          child: Text(
+            warning.description.isNotEmpty ? warning.description : 'No additional details available.', 
+            style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+          ),
         ),
 
         if (warning.severity.level >= 3) ...[
@@ -149,7 +161,11 @@ class _ExpandedContent extends StatelessWidget {
               border: Border.all(color: colors.first.withValues(alpha: 0.2)),
             ),
             child: Row(children: [
-              Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: colors.first.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)), child: Icon(Icons.info_rounded, color: colors.first, size: 16)),
+              Container(
+                padding: const EdgeInsets.all(6), 
+                decoration: BoxDecoration(color: colors.first.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)), 
+                child: Icon(Icons.info_rounded, color: colors.first, size: 16),
+              ),
               const SizedBox(width: 10),
               Expanded(child: Text(warning.severity.hint, style: theme.textTheme.bodySmall?.copyWith(color: colors.first, fontWeight: FontWeight.w600))),
             ]),
@@ -166,15 +182,15 @@ class _ExpandedContent extends StatelessWidget {
     final IconData statusIcon;
 
     if (warning.hasEnded) {
-      statusColor = AppTheme.textMuted;
+      statusColor = theme.colorScheme.outline;
       statusText = 'Ended';
       statusIcon = Icons.check_circle_rounded;
     } else if (warning.isActive) {
-      statusColor = AppTheme.success;
+      statusColor = theme.colorScheme.primary;
       statusText = 'Currently Active';
       statusIcon = Icons.radio_button_on_rounded;
     } else {
-      statusColor = AppTheme.warning;
+      statusColor = theme.colorScheme.tertiary;
       statusText = 'Upcoming';
       statusIcon = Icons.schedule_rounded;
     }

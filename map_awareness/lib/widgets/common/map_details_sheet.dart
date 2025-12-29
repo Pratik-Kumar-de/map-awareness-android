@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:map_awareness/utils/app_theme.dart';
+
 
 /// Modal bottom sheet content for displaying details of a map entity.
 class MapDetailsSheet extends StatelessWidget {
@@ -58,7 +58,7 @@ class MapDetailsSheet extends StatelessWidget {
                 child: Text(
                   subtitle,
                   style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: AppTheme.textSecondary),
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ),
             if (additionalChips != null && additionalChips!.isNotEmpty)

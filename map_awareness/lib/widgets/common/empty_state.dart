@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:map_awareness/utils/app_theme.dart';
+
 import 'package:map_awareness/utils/app_animations.dart';
 
 /// Empty state widget.
@@ -20,6 +20,7 @@ class EmptyStateWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
 
     return Center(
       child: Padding(
@@ -40,14 +41,7 @@ class EmptyStateWidget extends StatelessWidget {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppTheme.primary.withValues(alpha: 0.15),
-                      AppTheme.accent.withValues(alpha: 0.08),
-                    ],
-                  ),
+                  color: primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(28),
                 ),
                 child: Center(
@@ -55,17 +49,17 @@ class EmptyStateWidget extends StatelessWidget {
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
+                      color: primary,
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primary.withValues(alpha: 0.25),
+                          color: primary.withValues(alpha: 0.25),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),
                       ],
                     ),
-                    child: Icon(icon, color: Colors.white, size: 32),
+                    child: Icon(icon, color: theme.colorScheme.onPrimary, size: 32),
                   ),
                 ),
               ),
@@ -87,7 +81,7 @@ class EmptyStateWidget extends StatelessWidget {
             Text(
               subtitle,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textMuted,
+                color: theme.colorScheme.onSurfaceVariant,
                 height: 1.4,
               ),
               textAlign: TextAlign.center,

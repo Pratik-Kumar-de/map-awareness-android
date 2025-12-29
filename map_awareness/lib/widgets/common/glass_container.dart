@@ -8,8 +8,8 @@ class GlassContainer extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final double borderRadius;
   final double blur;
-  final Color color;
-  final Color borderColor;
+  final Color? color;
+  final Color? borderColor;
   final VoidCallback? onTap;
 
   const GlassContainer({
@@ -19,19 +19,24 @@ class GlassContainer extends StatelessWidget {
     this.margin,
     this.borderRadius = 12,
     this.blur = 8,
-    this.color = const Color(0xB3FFFFFF), // white with 0.7 alpha roughly
-    this.borderColor = const Color(0x33000000),
+    this.color,
+    this.borderColor,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Theme-aware defaults.
+    final effectiveColor = color ?? (isDark ? Colors.black.withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.7));
+    final effectiveBorder = borderColor ?? (isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.12));
+
     final box = Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: color,
+        color: effectiveColor,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: effectiveBorder),
       ),
       child: child,
     );
