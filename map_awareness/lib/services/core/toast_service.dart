@@ -30,7 +30,7 @@ class ToastService {
       style: ToastificationStyle.flatColored,
       title: Text(message, style: const TextStyle(fontWeight: FontWeight.w600)),
       autoCloseDuration: const Duration(seconds: 3),
-      alignment: Alignment.bottomCenter,
+      alignment: Alignment.topCenter,
       primaryColor: color,
       borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       boxShadow: AppTheme.cardShadow(context),

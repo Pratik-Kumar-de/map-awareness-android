@@ -18,8 +18,8 @@ class RoadworksSummary extends StatelessWidget {
     final total = roadworks[0].length + roadworks[1].length + roadworks[2].length;
     final items = [
       ...roadworks[0].map((r) => (r, cs.error, 'Ongoing')), 
-      ...roadworks[1].map((r) => (r, cs.tertiary, 'Soon')), 
-      ...roadworks[2].map((r) => (r, cs.primary, 'Future')),
+      ...roadworks[1].map((r) => (r, Colors.orange, 'Soon')), 
+      ...roadworks[2].map((r) => (r, Colors.blueAccent, 'Future')),
     ];
     
     return PremiumExpansionTile(
@@ -39,8 +39,8 @@ class RoadworksSummary extends StatelessWidget {
         padding: const EdgeInsets.only(top: 6),
         child: Wrap(spacing: 8, runSpacing: 6, children: [
           _buildSummaryChip(cs.error, '${roadworks[0].length} Now'),
-          _buildSummaryChip(cs.tertiary, '${roadworks[1].length} Soon'),
-          _buildSummaryChip(cs.primary, '${roadworks[2].length} Later'),
+          _buildSummaryChip(Colors.orange, '${roadworks[1].length} Soon'),
+          _buildSummaryChip(Colors.blueAccent, '${roadworks[2].length} Later'),
         ]),
       ),
       children: items.map((i) => _RoadworkCard(data: i.$1, color: i.$2, status: i.$3)).toList(),
