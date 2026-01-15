@@ -71,7 +71,7 @@ Route overview:
 - ${warnings.length} active warnings$weatherInfo
 
 Roadworks: ${roadworks.isEmpty ? 'None' : roadworks.take(5).map((r) => '${r.isBlocked ? '[BLOCKED] ' : ''}${r.title} (${r.typeLabel}) - ${r.subtitle}\nDetails: ${r.descriptionText.replaceAll('\n', ' ')}\nImpact: Length ${r.length ?? 'N/A'}, Speed ${r.speedLimit ?? 'N/A'}, Width ${r.maxWidth ?? 'N/A'}\nStatus: ${r.isFuture ? 'Future/Planned' : 'Active'} - ${r.timeInfo}').join(';\n')}
-Warnings: ${warnings.isEmpty ? 'None' : warnings.take(3).map((w) => '${w.title} - ${w.severity.label} (${w.category.name})\nSource: ${w.source}\nDetails: ${w.description.replaceAll('\n', ' ')}\n${w.instruction != null ? 'Instruction: ' + w.instruction!.replaceAll('\n', ' ') + '\n' : ''}Time: ${w.relativeTimeInfo}${w.latitude != null ? '\nLocation: ${w.latitude!.toStringAsFixed(3)}, ${w.longitude!.toStringAsFixed(3)}' : ''}').join(';\n')}
+Warnings: ${warnings.isEmpty ? 'None' : warnings.take(3).map((w) => '${w.title} - ${w.severity.label} (${w.category.name})\nSource: ${w.source}\nDetails: ${w.description.replaceAll('\n', ' ')}\n${w.instruction != null ? 'Instruction: ${w.instruction!.replaceAll('\n', ' ')}\n' : ''}Time: ${w.relativeTimeInfo}${w.latitude != null ? '\nLocation: ${w.latitude!.toStringAsFixed(3)}, ${w.longitude!.toStringAsFixed(3)}' : ''}').join(';\n')}
 
 Focus on: key hazards, weather impact on driving, recommended precautions, and overall trip outlook. Be concise and practical.''';
       
@@ -148,7 +148,7 @@ Current status:
 - Flood Risk: $floodInfo
 - Categories: ${warnings.map((w) => w.category.name).toSet().join(', ')}
 
-Active warnings: ${warnings.isEmpty ? 'None' : warnings.take(5).map((w) => '${w.title} (${w.severity.label}) - ${w.source}\nCategory: ${w.category.name}\nDetails: ${w.description.replaceAll('\n', ' ')}\n${w.instruction != null ? 'Instruction: ' + w.instruction!.replaceAll('\n', ' ') + '\n' : ''}Time: ${w.relativeTimeInfo}').join(';\n')}
+Active warnings: ${warnings.isEmpty ? 'None' : warnings.take(5).map((w) => '${w.title} (${w.severity.label}) - ${w.source}\nCategory: ${w.category.name}\nDetails: ${w.description.replaceAll('\n', ' ')}\n${w.instruction != null ? 'Instruction: ${w.instruction!.replaceAll('\n', ' ')}\n' : ''}Time: ${w.relativeTimeInfo}').join(';\n')}
 
 Focus on: immediate safety concerns including weather conditions, air quality health effects, flood risks, and practical advice for residents/visitors.''';
       

@@ -49,10 +49,18 @@ class GeocodingService {
         options: DioClient.shortCache(),
       );
       final hits = (res.data['hits'] as List?) ?? [];
-      return hits.map((h) => GeocodingResult(
-        point: LatLng((h['point']['lat'] as num).toDouble(), (h['point']['lng'] as num).toDouble()),
-        displayName: h['name'] ?? h['city'] ?? query,
-      )).toList();
+      return hits.map((h) {
+        final name = h['name'] ?? h['city'] ?? query;
+        final city = h['city'] as String?;
+        final country = h['country'] as String?;
+        final parts = <String>[name];
+        if (city != null && city != name) parts.add(city);
+        if (country != null) parts.add(country);
+        return GeocodingResult(
+          point: LatLng((h['point']['lat'] as num).toDouble(), (h['point']['lng'] as num).toDouble()),
+          displayName: parts.join(', '),
+        );
+      }).toList();
     } catch (_) {
       // Graceful degradation: return empty on API failure.
       return [];
