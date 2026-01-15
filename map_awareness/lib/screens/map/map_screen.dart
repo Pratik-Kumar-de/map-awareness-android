@@ -35,6 +35,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
   String? _activePopupKey;
   bool _mapReady = false;
   LatLng? _tempStartPoint;
+  bool _showRadius = false; // Toggles radius circle visibility on map.
   
   // Route creation mode: 0 = off, 1 = picking start, 2 = picking destination.
   int _routeStep = 0;
@@ -112,15 +113,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
       }
     });
 
-    ref.listen(warningProvider.select((s) => s.center), (_, center) {
-      // In build, we can use read or watch. Listen callback is triggered on change.
-      // We use ref.read for other providers to avoid re-triggering just for reading state inside callback.
-      final hasRoute = ref.read(routeProvider).hasRoute;
-      if (_mapReady && center != null && !hasRoute) {
-        final radius = ref.read(warningProvider).radiusKm;
-        _fitToRadius(center, radius);
-      }
-    });
+    // Note: Removed auto-center on warningState.center change - radius toggle controls visibility only.
 
     final routeState = ref.watch(routeProvider);
     final warningState = ref.watch(warningProvider);
@@ -161,10 +154,10 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
                 userAgentPackageName: 'com.map_awareness.app',
                 retinaMode: MediaQuery.devicePixelRatioOf(context) > 1.0,
               ),
-              if (isRadiusMode && center != null)
+              if (_showRadius && warningState.center != null)
                 CircleLayer(circles: [
                   CircleMarker(
-                    point: center,
+                    point: warningState.center!,
                     radius: warningState.radiusKm * 1000,
                     useRadiusInMeter: true,
                     color: AppTheme.primary.withValues(alpha: 0.15),
@@ -254,13 +247,22 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
                   ]),
                   if (_routeStep == 0) const SizedBox(height: 8),
                 ],
-                // Always show route creation button unless in step > 0 (it has its own UI) logic? 
-                // Actually user wants it "like the other buttons". 
-                // We keep it always visible. If _routeStep > 0, it becomes a "Cancel" button.
-                _RouteCreationButton(
-                  isActive: _routeStep > 0,
-                  onTap: _routeStep > 0 ? _cancelRouteCreation : _startRouteCreation,
-                ),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  // Radius toggle: only if a location is selected.
+                  if (warningState.hasLocation) ...[
+                    _LayerChip(
+                      label: 'Radius',
+                      icon: Icons.radar_rounded,
+                      active: _showRadius,
+                      onTap: () => setState(() => _showRadius = !_showRadius),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  _RouteCreationButton(
+                    isActive: _routeStep > 0,
+                    onTap: _routeStep > 0 ? _cancelRouteCreation : _startRouteCreation,
+                  ),
+                ]),
               ],
             ),
           ),
@@ -299,8 +301,8 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
       markers.add(_marker(routeState.polyline.last, MapMarker.small(icon: Icons.flag_rounded, color: AppTheme.error)));
     }
 
-    // Radius marker.
-    if (isRadiusMode && warningState.center != null) {
+    // Radius marker (shown when radius toggle is active).
+    if (_showRadius && warningState.center != null) {
       markers.add(_marker(warningState.center!, MapMarker.small(icon: Icons.my_location, color: AppTheme.primary)));
     }
 
