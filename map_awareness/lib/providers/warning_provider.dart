@@ -20,6 +20,7 @@ class WarningState {
   final WeatherDto? currentWeather;
   final bool isLoading;
   final bool isSummaryLoading;
+  final bool showRadiusCircle;
 
   const WarningState({
     this.warnings = const [],
@@ -34,6 +35,7 @@ class WarningState {
     this.currentWeather,
     this.isLoading = false,
     this.isSummaryLoading = false,
+    this.showRadiusCircle = false,
   });
 
   /// Creates a copy of the state with optional updated fields.
@@ -50,6 +52,7 @@ class WarningState {
     WeatherDto? currentWeather,
     bool? isLoading,
     bool? isSummaryLoading,
+    bool? showRadiusCircle,
   }) {
     return WarningState(
       warnings: warnings ?? this.warnings,
@@ -64,6 +67,7 @@ class WarningState {
       currentWeather: currentWeather ?? this.currentWeather,
       isLoading: isLoading ?? this.isLoading,
       isSummaryLoading: isSummaryLoading ?? this.isSummaryLoading,
+      showRadiusCircle: showRadiusCircle ?? this.showRadiusCircle,
     );
   }
 
@@ -77,6 +81,9 @@ class WarningNotifier extends StateNotifier<WarningState> {
 
   /// Updates the search radius in kilometers.
   void setRadius(double km) => state = state.copyWith(radiusKm: km);
+
+  /// Toggles radius circle visibility on map.
+  void toggleRadiusCircle() => state = state.copyWith(showRadiusCircle: !state.showRadiusCircle);
 
   /// Geocodes the query string and updates state with the first result's location.
   Future<bool> search(String query) async {

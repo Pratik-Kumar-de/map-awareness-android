@@ -7,7 +7,6 @@ import 'package:map_awareness/models/saved_location.dart';
 import 'package:map_awareness/models/warning_item.dart';
 import 'package:map_awareness/services/services.dart';
 import 'package:map_awareness/providers/app_providers.dart';
-import 'package:map_awareness/router/app_router.dart';
 import 'package:map_awareness/widgets/cards/warning_card.dart';
 import 'package:map_awareness/widgets/cards/ai_summary_card.dart';
 import 'package:map_awareness/widgets/common/empty_state.dart';
@@ -150,13 +149,17 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
     final state = ref.watch(warningProvider);
     final filtered = _filterWarnings(state);
 
-    return RefreshIndicator(
-      onRefresh: () => ref.read(warningProvider.notifier).refresh(),
-      color: AppTheme.primary,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        children: [
+    // Dismiss keyboard on tap outside input fields.
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: RefreshIndicator(
+        onRefresh: () => ref.read(warningProvider.notifier).refresh(),
+        color: AppTheme.primary,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          children: [
           SearchField(
             controller: _searchController,
             hintText: 'Search city or location...',
@@ -254,6 +257,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
               ],
             ),
         ],
+        ),
       ),
     );
   }
@@ -305,63 +309,36 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
     );
   }
 
-  /// Builds a row containing filter chips and a map navigation button.
+  /// Builds a row containing filter chips for warnings.
   Widget _buildFiltersRow(WarningState state, List<WarningItem> filtered) {
-    return Row(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                QuickChip(
-                  label: 'Active Only',
-                  icon: Icons.access_time_filled_rounded,
-                  isSelected: _showOnlyActive,
-                  onTap: () {
-                    Haptics.select();
-                    setState(() => _showOnlyActive = !_showOnlyActive);
-                  },
-                ),
-                const SizedBox(width: 8),
-                ...WarningSeverity.values.map((s) => Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: QuickChip(
-                    label: s.label,
-                    isSelected: _selectedSeverities.contains(s),
-                    onTap: () {
-                      Haptics.select();
-                      setState(() => _selectedSeverities.contains(s) ? _selectedSeverities.remove(s) : _selectedSeverities.add(s));
-                    },
-                  ),
-                )),
-              ],
-            ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          QuickChip(
+            label: 'Active Only',
+            icon: Icons.access_time_filled_rounded,
+            isSelected: _showOnlyActive,
+            onTap: () {
+              Haptics.select();
+              setState(() => _showOnlyActive = !_showOnlyActive);
+            },
           ),
-        ),
-        const SizedBox(width: 12),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: state.hasLocation ? () {
-              Haptics.medium();
-              AppRouter.goToMap();
-            } : null,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: state.hasLocation ? LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.tertiary]) : null,
-                color: !state.hasLocation ? Theme.of(context).colorScheme.surfaceContainerHigh : null,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: state.hasLocation ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))] : null,
-              ),
-              child: Icon(Icons.map_rounded, color: state.hasLocation ? Colors.white : Theme.of(context).colorScheme.outline, size: 22),
+          const SizedBox(width: 8),
+          ...WarningSeverity.values.map((s) => Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: QuickChip(
+              label: s.label,
+              isSelected: _selectedSeverities.contains(s),
+              onTap: () {
+                Haptics.select();
+                setState(() => _selectedSeverities.contains(s) ? _selectedSeverities.remove(s) : _selectedSeverities.add(s));
+              },
             ),
-          ),
-        ),
-      ],
+          )),
+        ],
+      ),
     );
   }
 

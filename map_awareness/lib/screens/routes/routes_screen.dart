@@ -121,8 +121,11 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
       ToastService.error(context, 'Location not found');
     } else {
       Haptics.heavy();
-      // Shows comparison sheet if alternatives available.
+      // Syncs resolved names back to input fields (auto-corrects spelling).
       final state = ref.read(routeProvider);
+      if (state.startName != null) _startController.text = state.startName!;
+      if (state.endName != null) _endController.text = state.endName!;
+      // Shows comparison sheet if alternatives available.
       if (mounted && state.alternatives.isNotEmpty) {
         showAppSheet(context, child: const RouteComparisonSheet());
       }
@@ -192,10 +195,14 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
       }
     });
 
-    return Column(
-      children: [
-        // Tab bar.
-        Container(
+    // Dismiss keyboard on tap outside input fields.
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: Column(
+        children: [
+          // Tab bar.
+          Container(
           margin: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
@@ -227,8 +234,9 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
                 ? KeyedSubtree(key: const ValueKey(0), child: _buildPlanTab(theme, state))
                 : KeyedSubtree(key: const ValueKey(1), child: _buildSavedTab(theme)),
           ),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 

@@ -133,7 +133,9 @@ flutter build windows --release
 ## Tech Stack
 - **Framework**: Flutter / Dart
 - **State**: Riverpod
+- **Storage**: Shared Preferences
 - **Maps**: Flutter Map (OSM), latlong2
+- **Location**: Geolocator
 - **HTTP**: Dio, dio_smart_retry
 - **Serialization**: json_serializable
 - **Theme**: FlexColorScheme, Google Fonts
