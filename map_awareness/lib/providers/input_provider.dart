@@ -18,7 +18,7 @@ class RouteInputState {
 
 /// Notifier managing route input fields and their updates.
 class RouteInputNotifier extends StateNotifier<RouteInputState> {
-  RouteInputNotifier() : super(const RouteInputState(start: 'Bremen', end: 'Hamburg'));
+  RouteInputNotifier() : super(const RouteInputState());
 
   /// Updates the start location text.
   void setStart(String value) => state = state.copyWith(start: value);

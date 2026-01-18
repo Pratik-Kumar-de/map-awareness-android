@@ -45,13 +45,11 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
 
 
 
-  /// Callback executed when the map has finished initializing.
   void _onMapReady() {
     _mapReady = true;
     final routeState = ref.read(routeProvider);
     final warningState = ref.read(warningProvider);
     
-    // Fits map initially.
     if (routeState.hasRoute) {
       _fitToRoute(routeState.polyline);
     } else if (warningState.center != null) {
@@ -106,7 +104,6 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
   Widget build(BuildContext context) {
     super.build(context);
     
-    // Listeners for map camera updates.
     ref.listen(routeProvider.select((s) => s.polyline), (_, polyline) {
       if (_mapReady && polyline.isNotEmpty) {
         _fitToRoute(polyline);
@@ -120,7 +117,9 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
     final cs = Theme.of(context).colorScheme;
 
     final hasRoute = routeState.hasRoute;
-    final isRadiusMode = warningState.hasLocation && !hasRoute;
+    final hasWarningLocation = warningState.hasLocation; // For radius button visibility.
+    final isRadiusMode = hasWarningLocation && !hasRoute; // For map centering priority.
+    final showRadius = hasWarningLocation && warningState.showRadiusCircle;
     final center = isRadiusMode ? warningState.center : routeState.polyline.firstOrNull;
 
     return Material(
@@ -229,6 +228,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                // Route layer toggles.
                 if (hasRoute) ...[
                   Row(mainAxisSize: MainAxisSize.min, children: [
                     _LayerChip(
@@ -245,7 +245,17 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
                       onTap: () => ref.read(routeProvider.notifier).toggleCharging(),
                     ),
                   ]),
-                  if (_routeStep == 0) const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                ],
+                // Radius toggle when warning location is set.
+                if (hasWarningLocation) ...[
+                  _LayerChip(
+                    label: 'Warning Area',
+                    icon: Icons.radar_rounded,
+                    active: warningState.showRadiusCircle,
+                    onTap: () => ref.read(warningProvider.notifier).toggleRadiusCircle(),
+                  ),
+                  const SizedBox(height: 8),
                 ],
                 Row(mainAxisSize: MainAxisSize.min, children: [
                   // Radius toggle: only if a location is selected.
@@ -620,7 +630,7 @@ class _LayerChip extends StatelessWidget {
   }
 }
 
-/// Floating button to toggle route creation mode.
+/// Floating button to toggle route creation mode with clear text label.
 class _RouteCreationButton extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
@@ -631,22 +641,29 @@ class _RouteCreationButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final color = isActive ? cs.error : cs.primary;
+    
     return GlassContainer(
-      // Default radius (12) and blur (8) match _MapControls.
-      padding: EdgeInsets.zero,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Icon(
-              isActive ? Icons.close : Icons.add_road, 
-              size: 20, 
-              color: color
+      onTap: onTap,
+      borderRadius: AppTheme.radiusLg,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isActive ? Icons.close : Icons.add_road,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isActive ? 'Cancel' : 'Create Route',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
             ),
           ),
-        ),
+        ],
       ),
     );
   }

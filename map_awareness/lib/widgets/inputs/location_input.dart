@@ -1,8 +1,143 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:map_awareness/services/services.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/widgets/common/premium_card.dart';
+
+/// Builds dropdown list for autocomplete suggestions.
+Widget _buildOptionsView(BuildContext context, void Function(GeocodingResult) onSelected, Iterable<GeocodingResult> options, Color accent) {
+  if (options.isEmpty) return const SizedBox.shrink();
+  return Align(
+    alignment: Alignment.topLeft,
+    child: Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 200, maxWidth: 360),
+        child: ListView.builder(
+          padding: EdgeInsets.zero,
+          shrinkWrap: true,
+          itemCount: options.length,
+          itemBuilder: (context, i) {
+            final opt = options.elementAt(i);
+            return ListTile(
+              dense: true,
+              leading: Icon(Icons.place_rounded, size: 20, color: accent),
+              title: Text(opt.displayName, style: Theme.of(context).textTheme.bodyMedium),
+              onTap: () => onSelected(opt),
+            );
+          },
+        ),
+      ),
+    ),
+  );
+}
+
+/// Reusable autocomplete text field for location input with debounced API suggestions.
+class AutocompleteTextField extends StatefulWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final IconData icon;
+  final Color iconColor;
+  final Widget? suffixWidget;
+  final TextInputAction textInputAction;
+
+  const AutocompleteTextField({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.icon,
+    required this.iconColor,
+    this.suffixWidget,
+    this.textInputAction = TextInputAction.done,
+  });
+
+  @override
+  State<AutocompleteTextField> createState() => _AutocompleteTextFieldState();
+}
+
+class _AutocompleteTextFieldState extends State<AutocompleteTextField> {
+  Timer? _debounce;
+  List<GeocodingResult> _suggestions = [];
+  final FocusNode _focusNode = FocusNode();
+  String _lastQuery = '';
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  /// Fetches suggestions with debounce, uses setState to trigger rebuild.
+  void _fetchSuggestions(String query) {
+    _debounce?.cancel();
+    
+    // Skip if query unchanged (avoids redundant calls).
+    if (query == _lastQuery) return;
+    _lastQuery = query;
+    
+    // Clear suggestions immediately for short queries.
+    if (query.length < 2) {
+      if (_suggestions.isNotEmpty) setState(() => _suggestions = []);
+      return;
+    }
+    
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      final results = await GeocodingService.search(query, limit: 5);
+      // Use setState to properly trigger RawAutocomplete rebuild.
+      if (mounted) setState(() => _suggestions = results);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return RawAutocomplete<GeocodingResult>(
+      textEditingController: widget.controller,
+      focusNode: _focusNode,
+      // optionsBuilder must return synchronously; async handled via setState.
+      optionsBuilder: (v) {
+        _fetchSuggestions(v.text);
+        return _suggestions;
+      },
+      displayStringForOption: (result) => result.displayName,
+      onSelected: (result) {
+        // RawAutocomplete auto-updates controller via displayStringForOption.
+        // Sync lastQuery after frame to match the updated text.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _lastQuery = widget.controller.text);
+        });
+        setState(() => _suggestions = []);
+      },
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: controller,
+          focusNode: focusNode,
+          style: theme.textTheme.bodyLarge,
+          textInputAction: widget.textInputAction,
+          decoration: InputDecoration(
+            labelText: widget.label,
+            hintText: widget.hint,
+            filled: true,
+            fillColor: theme.colorScheme.surfaceContainer,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            prefixIcon: Container(padding: const EdgeInsets.all(12), child: Icon(widget.icon, color: widget.iconColor, size: 20)),
+            prefixIconConstraints: const BoxConstraints(),
+            suffixIcon: widget.suffixWidget,
+          ),
+        );
+      },
+      optionsViewBuilder: (ctx, onSel, opts) => _buildOptionsView(ctx, onSel, opts, theme.colorScheme.primary),
+    );
+  }
+}
 
 /// Widget providing dual text inputs (From/To) with location services, swapping, and map callbacks.
 class LocationInput extends StatelessWidget {
@@ -142,7 +277,7 @@ class _SwapButton extends StatelessWidget {
   }
 }
 
-/// Standalone location search field with focus animation and integrated action buttons (Search, My Location, Save).
+/// Standalone location search field with focus animation, autocomplete, and integrated action buttons.
 class SearchField extends StatefulWidget {
   final TextEditingController controller;
   final String hintText;
@@ -167,9 +302,47 @@ class SearchField extends StatefulWidget {
   State<SearchField> createState() => _SearchFieldState();
 }
 
-/// State for SearchField managing focus status and visual feedback.
+/// State for SearchField managing focus, autocomplete suggestions, and visual feedback.
 class _SearchFieldState extends State<SearchField> {
   bool _isFocused = false;
+  Timer? _debounce;
+  List<GeocodingResult> _suggestions = [];
+  final FocusNode _focusNode = FocusNode();
+  String _lastQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() => setState(() => _isFocused = _focusNode.hasFocus));
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  /// Fetches suggestions with debounce, uses setState to trigger rebuild.
+  void _fetchSuggestions(String query) {
+    _debounce?.cancel();
+    
+    // Skip if query unchanged (avoids redundant calls).
+    if (query == _lastQuery) return;
+    _lastQuery = query;
+    
+    // Clear suggestions immediately for short queries.
+    if (query.length < 2) {
+      if (_suggestions.isNotEmpty) setState(() => _suggestions = []);
+      return;
+    }
+    
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      final results = await GeocodingService.search(query, limit: 5);
+      // Use setState to properly trigger RawAutocomplete rebuild.
+      if (mounted) setState(() => _suggestions = results);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

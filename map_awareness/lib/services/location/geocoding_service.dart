@@ -40,12 +40,19 @@ class GeocodingService {
     return input;
   }
 
-  /// Performs a geocoding search query against the API.
+  /// Performs a geocoding search query against the API (filtered to Germany).
   static Future<List<GeocodingResult>> search(String query, {int limit = 5}) async {
     try {
       final res = await DioClient.instance.get(
         '${GeocodingService.baseUrl}/geocode',
-        queryParameters: {'q': query, 'locale': 'en', 'limit': limit, 'key': GeocodingService.apiKey},
+        queryParameters: {
+          'q': query,
+          'locale': 'de',
+          'limit': limit,
+          'key': GeocodingService.apiKey,
+          // Germany bounding box: minLon,minLat,maxLon,maxLat
+          'bbox': '5.87,47.27,15.04,55.06',
+        },
         options: DioClient.shortCache(),
       );
       final hits = (res.data['hits'] as List?) ?? [];
@@ -72,7 +79,7 @@ class GeocodingService {
     try {
       final res = await DioClient.instance.get(
         '${GeocodingService.baseUrl}/geocode',
-        queryParameters: {'point': '$lat,$lng', 'reverse': 'true', 'locale': 'en', 'limit': 1, 'key': GeocodingService.apiKey},
+        queryParameters: {'point': '$lat,$lng', 'reverse': 'true', 'locale': 'de', 'limit': 1, 'key': GeocodingService.apiKey},
         options: DioClient.shortCache(),
       );
       final hits = (res.data['hits'] as List?) ?? [];
