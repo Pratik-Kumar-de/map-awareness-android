@@ -35,6 +35,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
   String? _activePopupKey;
   bool _mapReady = false;
   LatLng? _tempStartPoint;
+  bool _showRadius = false; // Toggles radius circle visibility on map.
   
   // Route creation mode: 0 = off, 1 = picking start, 2 = picking destination.
   int _routeStep = 0;
@@ -109,6 +110,8 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
       }
     });
 
+    // Note: Removed auto-center on warningState.center change - radius toggle controls visibility only.
+
     final routeState = ref.watch(routeProvider);
     final warningState = ref.watch(warningProvider);
     final cs = Theme.of(context).colorScheme;
@@ -150,8 +153,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
                 userAgentPackageName: 'com.map_awareness.app',
                 retinaMode: MediaQuery.devicePixelRatioOf(context) > 1.0,
               ),
-              // Radius circle only visible when toggled on.
-              if (showRadius && warningState.center != null)
+              if (_showRadius && warningState.center != null)
                 CircleLayer(circles: [
                   CircleMarker(
                     point: warningState.center!,
@@ -255,10 +257,22 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
                   ),
                   const SizedBox(height: 8),
                 ],
-                _RouteCreationButton(
-                  isActive: _routeStep > 0,
-                  onTap: _routeStep > 0 ? _cancelRouteCreation : _startRouteCreation,
-                ),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  // Radius toggle: only if a location is selected.
+                  if (warningState.hasLocation) ...[
+                    _LayerChip(
+                      label: 'Radius',
+                      icon: Icons.radar_rounded,
+                      active: _showRadius,
+                      onTap: () => setState(() => _showRadius = !_showRadius),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  _RouteCreationButton(
+                    isActive: _routeStep > 0,
+                    onTap: _routeStep > 0 ? _cancelRouteCreation : _startRouteCreation,
+                  ),
+                ]),
               ],
             ),
           ),
@@ -297,8 +311,8 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
       markers.add(_marker(routeState.polyline.last, MapMarker.small(icon: Icons.flag_rounded, color: AppTheme.error)));
     }
 
-    // Radius marker.
-    if (isRadiusMode && warningState.center != null) {
+    // Radius marker (shown when radius toggle is active).
+    if (_showRadius && warningState.center != null) {
       markers.add(_marker(warningState.center!, MapMarker.small(icon: Icons.my_location, color: AppTheme.primary)));
     }
 

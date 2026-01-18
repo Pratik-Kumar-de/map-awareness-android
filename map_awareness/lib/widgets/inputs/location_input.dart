@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:map_awareness/services/location/geocoding_service.dart';
+import 'package:map_awareness/services/services.dart';
 import 'package:map_awareness/utils/app_theme.dart';
 import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/widgets/common/premium_card.dart';
@@ -178,8 +178,8 @@ class LocationInput extends StatelessWidget {
             suffixWidget: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (onMapSelectStart != null) _buildMapButton(context, onMapSelectStart!),
-                _buildLocationButton(context),
+                if (onMapSelectStart != null) ActionIcon(icon: Icons.map_outlined, onTap: () { Haptics.light(); onMapSelectStart!(); }, tooltip: 'Select on map', color: Theme.of(context).colorScheme.secondary),
+                ActionIcon(icon: Icons.my_location_rounded, onTap: isGettingLocation ? null : () { Haptics.light(); onMyLocation?.call(); }, tooltip: 'My location', isLoading: isGettingLocation),
               ],
             ),
           ),
@@ -201,53 +201,53 @@ class LocationInput extends StatelessWidget {
             hint: 'Destination',
             icon: Icons.location_on_rounded,
             iconColor: theme.colorScheme.error,
-            suffixWidget: onMapSelectEnd != null ? _buildMapButton(context, onMapSelectEnd!) : null,
+            suffixWidget: onMapSelectEnd != null ? ActionIcon(icon: Icons.map_outlined, onTap: () { Haptics.light(); onMapSelectEnd!(); }, tooltip: 'Select on map', color: Theme.of(context).colorScheme.secondary) : null,
           ),
         ],
       ),
     );
   }
 
-  /// Builds autocomplete input field with TextInputAction based on label.
+  /// Builds autocomplete input field with GeocodingService suggestions.
   Widget _buildInput(BuildContext context, {required TextEditingController controller, required String label, required String hint, required IconData icon, required Color iconColor, Widget? suffixWidget}) {
-    final isStartField = label == 'From';
-    return AutocompleteTextField(
-      controller: controller,
-      label: label,
-      hint: hint,
-      icon: icon,
-      iconColor: iconColor,
-      suffixWidget: suffixWidget,
-      textInputAction: isStartField ? TextInputAction.next : TextInputAction.done,
-    );
-  }
-
-  /// Renders the "Use my location" button with loading state support.
-  Widget _buildLocationButton(BuildContext context) {
-    return ActionIcon(
-      icon: Icons.my_location_rounded,
-      tooltip: 'Use my location',
-      isLoading: isGettingLocation,
-      color: Theme.of(context).colorScheme.primary,
-      onTap: () {
-        Haptics.light();
-        onMyLocation?.call();
+    final theme = Theme.of(context);
+    return Autocomplete<GeocodingResult>(
+      optionsBuilder: (text) => text.text.length < 2 ? [] : GeocodingService.search(text.text),
+      displayStringForOption: (r) => r.displayName,
+      onSelected: (r) => controller.text = r.displayName,
+      fieldViewBuilder: (ctx, textController, focusNode, onSubmit) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (textController.text != controller.text) textController.text = controller.text;
+        });
+        controller.addListener(() {
+          try {
+            if (textController.text != controller.text) textController.text = controller.text;
+          } catch (_) {
+            // Controller may be disposed, ignore
+          }
+        });
+        return TextField(
+          controller: textController,
+          focusNode: focusNode,
+          style: theme.textTheme.bodyLarge,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            filled: true,
+            fillColor: theme.colorScheme.surfaceContainer,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppTheme.radiusSm), borderSide: BorderSide(color: theme.colorScheme.primary, width: 2)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            prefixIcon: Container(padding: const EdgeInsets.all(12), child: Icon(icon, color: iconColor, size: 20)),
+            prefixIconConstraints: const BoxConstraints(),
+            suffixIcon: suffixWidget,
+          ),
+        );
       },
     );
   }
 
-  /// Renders a map selection button triggering the parent callback.
-  Widget _buildMapButton(BuildContext context, VoidCallback onTap) {
-    return ActionIcon(
-      icon: Icons.map_outlined,
-      tooltip: 'Select on map',
-      color: Theme.of(context).colorScheme.secondary,
-      onTap: () {
-        Haptics.light();
-        onTap();
-      },
-    );
-  }
 }
 
 /// Floating button to swap start and end input values.
@@ -349,61 +349,56 @@ class _SearchFieldState extends State<SearchField> {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
 
-    return RawAutocomplete<GeocodingResult>(
-      textEditingController: widget.controller,
-      focusNode: _focusNode,
-      // optionsBuilder must return synchronously; async handled via setState.
-      optionsBuilder: (v) {
-        _fetchSuggestions(v.text);
-        return _suggestions;
-      },
-      displayStringForOption: (result) => result.displayName,
-      onSelected: (result) {
-        // RawAutocomplete auto-updates controller via displayStringForOption.
-        // Sync lastQuery after frame to match the updated text.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() => _lastQuery = widget.controller.text);
-        });
-        setState(() => _suggestions = []);
-        // Triggers search after selection.
-        Haptics.select();
-        widget.onSearch?.call();
-      },
-      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-        return AnimatedContainer(
-          duration: AppTheme.animNormal,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            boxShadow: AppTheme.cardShadow(context),
-            border: Border.all(color: _isFocused ? primary : Colors.transparent, width: 2),
-          ),
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            style: theme.textTheme.bodyLarge,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: widget.hintText,
-              hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-              filled: false,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.fromLTRB(20, 18, 8, 18),
-              prefixIcon: Container(
-                padding: const EdgeInsets.only(left: 16, right: 12),
-                child: Icon(Icons.search_rounded, color: _isFocused ? primary : theme.colorScheme.onSurfaceVariant, size: 24),
+    return AnimatedContainer(
+      duration: AppTheme.animNormal,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        boxShadow: AppTheme.cardShadow(context),
+        border: Border.all(color: _isFocused ? primary : Colors.transparent, width: 2),
+      ),
+      child: Focus(
+        onFocusChange: (focused) => setState(() => _isFocused = focused),
+        child: Autocomplete<GeocodingResult>(
+          optionsBuilder: (text) => text.text.length < 2 ? [] : GeocodingService.search(text.text),
+          displayStringForOption: (r) => r.displayName,
+          onSelected: (r) => widget.controller.text = r.displayName,
+          fieldViewBuilder: (ctx, controller, focusNode, onSubmit) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (controller.text != widget.controller.text) controller.text = widget.controller.text;
+            });
+            widget.controller.addListener(() {
+              try {
+                if (controller.text != widget.controller.text) controller.text = widget.controller.text;
+              } catch (_) {
+                // Controller may be disposed, ignore
+              }
+            });
+            return TextField(
+              controller: controller,
+              focusNode: focusNode,
+              style: theme.textTheme.bodyLarge,
+              decoration: InputDecoration(
+                hintText: widget.hintText,
+                hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                filled: false,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.fromLTRB(20, 18, 8, 18),
+                prefixIcon: Container(
+                  padding: const EdgeInsets.only(left: 16, right: 12),
+                  child: Icon(Icons.search_rounded, color: _isFocused ? primary : theme.colorScheme.onSurfaceVariant, size: 24),
+                ),
+                prefixIconConstraints: const BoxConstraints(),
+                suffixIcon: _buildSuffixIcons(theme),
               ),
-              prefixIconConstraints: const BoxConstraints(),
-              suffixIcon: _buildSuffixIcons(theme),
-            ),
-            onSubmitted: (_) {
-              Haptics.select();
-              widget.onSearch?.call();
-            },
-          ),
-        );
-      },
-      optionsViewBuilder: (ctx, onSel, opts) => _buildOptionsView(ctx, onSel, opts, primary),
+              onSubmitted: (_) {
+                Haptics.select();
+                widget.onSearch?.call();
+              },
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -412,14 +407,10 @@ class _SearchFieldState extends State<SearchField> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.isLoading)
-          const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)))
-        else if (widget.onMyLocation != null)
-          ActionIcon(icon: Icons.my_location_rounded, onTap: () { Haptics.light(); widget.onMyLocation?.call(); }, tooltip: 'My location'),
-        if (widget.onSave != null && !widget.isSaving)
-          ActionIcon(icon: Icons.bookmark_add_outlined, onTap: () { Haptics.medium(); widget.onSave?.call(); }, tooltip: 'Save location', color: theme.colorScheme.secondary),
-        if (widget.isSaving)
-          const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))),
+        if (widget.onMyLocation != null)
+          ActionIcon(icon: Icons.my_location_rounded, onTap: () { Haptics.light(); widget.onMyLocation?.call(); }, tooltip: 'My location', isLoading: widget.isLoading),
+        if (widget.onSave != null)
+          ActionIcon(icon: Icons.bookmark_add_outlined, onTap: () { Haptics.medium(); widget.onSave?.call(); }, tooltip: 'Save location', color: theme.colorScheme.secondary, isLoading: widget.isSaving),
         const SizedBox(width: 8),
       ],
     );
@@ -433,15 +424,7 @@ class ActionIcon extends StatelessWidget {
   final String? tooltip;
   final Color? color;
   final bool isLoading;
-
-  const ActionIcon({
-    super.key,
-    required this.icon,
-    this.onTap,
-    this.tooltip,
-    this.color,
-    this.isLoading = false,
-  });
+  const ActionIcon({super.key, required this.icon, this.onTap, this.tooltip, this.color, this.isLoading = false});
 
   @override
   Widget build(BuildContext context) {

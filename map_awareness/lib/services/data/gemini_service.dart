@@ -61,7 +61,8 @@ class GeminiService {
 
 Stats: ${roadworks.length} roadworks ($blocked blocked, $shortTerm short-term), ${activeWarnings.length} warnings ($severeWarnings severe)$weather
 
-${roadworks.isEmpty ? '' : 'Roadworks:\n${roadworks.take(4).map((r) => '• ${r.isBlocked ? '🚫 ' : ''}${r.title} (${r.typeLabel}) - ${r.timeInfo}${r.speedLimit != null ? ', max ${r.speedLimit}' : ''}').join('\n')}'}
+Roadworks: ${roadworks.isEmpty ? 'None' : roadworks.take(5).map((r) => '${r.isBlocked ? '[BLOCKED] ' : ''}${r.title} (${r.typeLabel}) - ${r.subtitle}\nDetails: ${r.descriptionText.replaceAll('\n', ' ')}\nImpact: Length ${r.length ?? 'N/A'}, Speed ${r.speedLimit ?? 'N/A'}, Width ${r.maxWidth ?? 'N/A'}\nStatus: ${r.isFuture ? 'Future/Planned' : 'Active'} - ${r.timeInfo}').join(';\n')}
+Warnings: ${warnings.isEmpty ? 'None' : warnings.take(3).map((w) => '${w.title} - ${w.severity.label} (${w.category.name})\nSource: ${w.source}\nDetails: ${w.description.replaceAll('\n', ' ')}\n${w.instruction != null ? 'Instruction: ${w.instruction!.replaceAll('\n', ' ')}\n' : ''}Time: ${w.relativeTimeInfo}${w.latitude != null ? '\nLocation: ${w.latitude!.toStringAsFixed(3)}, ${w.longitude!.toStringAsFixed(3)}' : ''}').join(';\n')}
 
 ${activeWarnings.isEmpty ? '' : 'Warnings:\n${activeWarnings.take(3).map((w) => '• ${w.severity.label}: ${w.title}${w.endTime != null ? ' (${w.relativeTimeInfo})' : ''}${w.instruction != null ? ' → ${w.instruction}' : ''}').join('\n')}'}
 
@@ -121,7 +122,7 @@ Focus: hazards, weather impact, precautions. Be practical.''';
       
       final prompt = '''Brief English safety summary (max 4 sentences) for $location${radiusKm != null ? ' (radius ${radiusKm.toInt()}km)' : ''}.
 
-Status: ${activeWarnings.length} active warnings ($severeCount severe)$envInfo
+Active warnings: ${warnings.isEmpty ? 'None' : warnings.take(5).map((w) => '${w.title} (${w.severity.label}) - ${w.source}\nCategory: ${w.category.name}\nDetails: ${w.description.replaceAll('\n', ' ')}\n${w.instruction != null ? 'Instruction: ${w.instruction!.replaceAll('\n', ' ')}\n' : ''}Time: ${w.relativeTimeInfo}').join(';\n')}
 
 ${activeWarnings.isEmpty ? '' : 'Warnings:\n${activeWarnings.take(5).map((w) => '• ${w.severity.label}: ${w.title}${w.endTime != null ? ' (Ends ${w.relativeTimeInfo})' : ''}${w.instruction != null ? ' → ${w.instruction}' : ''}').join('\n')}'}
 
