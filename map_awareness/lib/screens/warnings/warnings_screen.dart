@@ -333,22 +333,28 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> with AutomaticK
               setState(() => _showOnlyActive = !_showOnlyActive);
             },
           ),
-        ),
-        const SizedBox(width: 12),
-        Container(
-          decoration: BoxDecoration(
-            gradient: state.hasLocation ? LinearGradient(colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.tertiary]) : null,
-            color: !state.hasLocation ? Theme.of(context).colorScheme.surfaceContainerHigh : null,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: state.hasLocation ? [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))] : null,
-          ),
-          child: ActionIcon(
-            icon: Icons.map_rounded,
-            onTap: state.hasLocation ? () { Haptics.medium(); AppRouter.goToMap(); } : null,
-            color: state.hasLocation ? Colors.white : Theme.of(context).colorScheme.outline,
-          ),
-        ),
-      ],
+          const SizedBox(width: 10),
+          ...WarningSeverity.values.map((sev) => Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: QuickChip(
+              label: sev.label,
+              icon: Icons.warning_amber_rounded,
+              isSelected: _selectedSeverities.contains(sev),
+              color: sev.color,
+              onTap: () {
+                Haptics.select();
+                setState(() {
+                  if (_selectedSeverities.contains(sev)) {
+                    _selectedSeverities.remove(sev);
+                  } else {
+                    _selectedSeverities.add(sev);
+                  }
+                });
+              },
+            ),
+          )),
+        ],
+      ),
     );
   }
 

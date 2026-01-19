@@ -363,14 +363,6 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> with SingleTickerPr
                     },
                   ),
                 ],
-                if (state.hasRoute) ...[ 
-                  const SizedBox(height: 16),
-                  AppButton.primary(
-                    label: 'View on Map',
-                    icon: Icons.map_rounded,
-                    onPressed: () => AppRouter.goToMap(),
-                  ),
-                ],
               ],
             ),
         ],

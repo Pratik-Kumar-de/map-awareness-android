@@ -16,7 +16,6 @@ import 'package:map_awareness/widgets/common/map_marker.dart';
 import 'package:map_awareness/utils/helpers.dart';
 import 'package:map_awareness/widgets/cards/route_comparison_sheet.dart';
 
-
 /// Screen displaying the interactive map with route polylines and event markers.
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -25,31 +24,28 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-
 /// State for MapScreen handling map controller and reactive fitting.
-class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveClientMixin {
+class _MapScreenState extends ConsumerState<MapScreen>
+    with AutomaticKeepAliveClientMixin {
   final _mapController = MapController();
   static const _defaultCenter = LatLng(51.1657, 10.4515);
   static const _defaultZoom = 6.0;
-  
+
   String? _activePopupKey;
   bool _mapReady = false;
   LatLng? _tempStartPoint;
-  bool _showRadius = false; // Toggles radius circle visibility on map.
-  
+
   // Route creation mode: 0 = off, 1 = picking start, 2 = picking destination.
   int _routeStep = 0;
 
   @override
   bool get wantKeepAlive => true;
 
-
-
   void _onMapReady() {
     _mapReady = true;
     final routeState = ref.read(routeProvider);
     final warningState = ref.read(warningProvider);
-    
+
     if (routeState.hasRoute) {
       _fitToRoute(routeState.polyline);
     } else if (warningState.center != null) {
@@ -61,7 +57,10 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
   void _fitToRoute(List<LatLng> points) {
     if (points.isEmpty) return;
     _mapController.fitCamera(
-      CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.all(50)),
+      CameraFit.coordinates(
+        coordinates: points,
+        padding: const EdgeInsets.all(50),
+      ),
     );
   }
 
@@ -83,7 +82,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
   void _recenter() {
     final routeState = ref.read(routeProvider);
     final warningState = ref.read(warningProvider);
-    
+
     if (routeState.hasRoute) {
       _fitToRoute(routeState.polyline);
     } else if (warningState.center != null) {
@@ -103,7 +102,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     ref.listen(routeProvider.select((s) => s.polyline), (_, polyline) {
       if (_mapReady && polyline.isNotEmpty) {
         _fitToRoute(polyline);
@@ -117,10 +116,13 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
     final cs = Theme.of(context).colorScheme;
 
     final hasRoute = routeState.hasRoute;
-    final hasWarningLocation = warningState.hasLocation; // For radius button visibility.
-    final isRadiusMode = hasWarningLocation && !hasRoute; // For map centering priority.
-    final showRadius = hasWarningLocation && warningState.showRadiusCircle;
-    final center = isRadiusMode ? warningState.center : routeState.polyline.firstOrNull;
+    final hasWarningLocation =
+        warningState.hasLocation; // For radius button visibility.
+    final isRadiusMode =
+        hasWarningLocation && !hasRoute; // For map centering priority.
+    final center = isRadiusMode
+        ? warningState.center
+        : routeState.polyline.firstOrNull;
 
     return Material(
       color: cs.surface,
@@ -130,22 +132,28 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
             mapController: _mapController,
             options: MapOptions(
               initialCenter: center ?? _defaultCenter,
-              initialZoom: isRadiusMode ? _zoomForRadius(warningState.radiusKm) : _defaultZoom,
+              initialZoom: isRadiusMode
+                  ? _zoomForRadius(warningState.radiusKm)
+                  : _defaultZoom,
               onMapReady: _onMapReady,
-              interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
-                 onTap: (tapPos, point) async {
-                   // Route creation mode: handles step-by-step.
-                   if (_routeStep > 0) {
-                     await _handleRouteTap(point);
-                     return;
-                   }
-                   
-                   // Dismisses active popup.
-                   if (mounted && _activePopupKey != null && Navigator.of(context).canPop()) {
-                     Navigator.of(context).pop();
-                     _activePopupKey = null;
-                   }
-                 },
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all,
+              ),
+              onTap: (tapPos, point) async {
+                // Route creation mode: handles step-by-step.
+                if (_routeStep > 0) {
+                  await _handleRouteTap(point);
+                  return;
+                }
+
+                // Dismisses active popup.
+                if (mounted &&
+                    _activePopupKey != null &&
+                    Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                  _activePopupKey = null;
+                }
+              },
             ),
             children: [
               TileLayer(
@@ -153,50 +161,67 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
                 userAgentPackageName: 'com.map_awareness.app',
                 retinaMode: MediaQuery.devicePixelRatioOf(context) > 1.0,
               ),
-              if (_showRadius && warningState.center != null)
-                CircleLayer(circles: [
-                  CircleMarker(
-                    point: warningState.center!,
-                    radius: warningState.radiusKm * 1000,
-                    useRadiusInMeter: true,
-                    color: AppTheme.primary.withValues(alpha: 0.15),
-                    borderColor: AppTheme.primary,
-                    borderStrokeWidth: 2.5,
-                  ),
-                ]),
-              
+              if (warningState.showRadiusCircle && warningState.center != null)
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: warningState.center!,
+                      radius: warningState.radiusKm * 1000,
+                      useRadiusInMeter: true,
+                      color: AppTheme.primary.withValues(alpha: 0.15),
+                      borderColor: AppTheme.primary,
+                      borderStrokeWidth: 2.5,
+                    ),
+                  ],
+                ),
+
               // Alternative Routes (tappable).
               if (hasRoute && routeState.availableRoutes.length > 1)
                 GestureDetector(
                   onTapDown: (_) => _showRouteComparison(),
-                  child: PolylineLayer(polylines: [
-                    for (var i = 0; i < routeState.availableRoutes.length; i++)
-                      if (i != routeState.selectedRouteIndex)
-                        Polyline(
-                          points: routeState.availableRoutes[i].coordinates,
-                          color: Colors.black.withValues(alpha: 0.4),
-                          strokeWidth: 8, // Wider for easier tap.
-                          borderColor: Colors.white.withValues(alpha: 0.5),
-                          borderStrokeWidth: 2,
-                          strokeCap: StrokeCap.round,
-                          strokeJoin: StrokeJoin.round,
-                        ),
-                  ]),
+                  child: PolylineLayer(
+                    polylines: [
+                      for (
+                        var i = 0;
+                        i < routeState.availableRoutes.length;
+                        i++
+                      )
+                        if (i != routeState.selectedRouteIndex)
+                          Polyline(
+                            points: routeState.availableRoutes[i].coordinates,
+                            color: Colors.black.withValues(alpha: 0.4),
+                            strokeWidth: 8, // Wider for easier tap.
+                            borderColor: Colors.white.withValues(alpha: 0.5),
+                            borderStrokeWidth: 2,
+                            strokeCap: StrokeCap.round,
+                            strokeJoin: StrokeJoin.round,
+                          ),
+                    ],
+                  ),
                 ),
 
               if (hasRoute)
-                PolylineLayer(polylines: [
-                  Polyline(
-                    points: routeState.polyline,
-                    color: AppTheme.primary,
-                    strokeWidth: 5,
-                    borderColor: Colors.black.withValues(alpha: 0.6),
-                    borderStrokeWidth: 1,
-                    strokeCap: StrokeCap.round,
-                    strokeJoin: StrokeJoin.round,
-                  ),
-                ]),
-              MarkerLayer(markers: _buildMarkers(routeState, warningState, hasRoute, isRadiusMode)),
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: routeState.polyline,
+                      color: AppTheme.primary,
+                      strokeWidth: 5,
+                      borderColor: Colors.black.withValues(alpha: 0.6),
+                      borderStrokeWidth: 1,
+                      strokeCap: StrokeCap.round,
+                      strokeJoin: StrokeJoin.round,
+                    ),
+                  ],
+                ),
+              MarkerLayer(
+                markers: _buildMarkers(
+                  routeState,
+                  warningState,
+                  hasRoute,
+                  isRadiusMode,
+                ),
+              ),
             ],
           ),
 
@@ -205,8 +230,14 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
             right: AppTheme.spacingMd,
             bottom: 100,
             child: _MapControls(
-              onZoomIn: () => _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1),
-              onZoomOut: () => _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1),
+              onZoomIn: () => _mapController.move(
+                _mapController.camera.center,
+                _mapController.camera.zoom + 1,
+              ),
+              onZoomOut: () => _mapController.move(
+                _mapController.camera.center,
+                _mapController.camera.zoom - 1,
+              ),
               onRecenter: (hasRoute || isRadiusMode) ? _recenter : null,
             ),
           ),
@@ -230,21 +261,90 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
               children: [
                 // Route layer toggles.
                 if (hasRoute) ...[
-                  Row(mainAxisSize: MainAxisSize.min, children: [
-                    _LayerChip(
-                      label: 'Parking',
-                      icon: Icons.local_parking,
-                      active: routeState.showParking,
-                      onTap: () => ref.read(routeProvider.notifier).toggleParking(),
-                    ),
-                    const SizedBox(width: 8),
-                    _LayerChip(
-                      label: 'EV Charging',
-                      icon: Icons.ev_station,
-                      active: routeState.showCharging,
-                      onTap: () => ref.read(routeProvider.notifier).toggleCharging(),
-                    ),
-                  ]),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _LayerChip(
+                        label: 'Parking',
+                        icon: Icons.local_parking,
+                        active: routeState.showParking,
+                        onTap: () =>
+                            ref.read(routeProvider.notifier).toggleParking(),
+                      ),
+                      const SizedBox(width: 8),
+                      _LayerChip(
+                        label: 'EV Charging',
+                        icon: Icons.ev_station,
+                        active: routeState.showCharging,
+                        onTap: () =>
+                            ref.read(routeProvider.notifier).toggleCharging(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _LayerChip(
+                        label: 'Roadworks',
+                        icon: Icons.construction,
+                        active: routeState.showRoadworks,
+                        onTap: () =>
+                            ref.read(routeProvider.notifier).toggleRoadworks(),
+                      ),
+                      const SizedBox(width: 8),
+                      Opacity(
+                        opacity: routeState.showRoadworks ? 1.0 : 0.4,
+                        child: IgnorePointer(
+                          ignoring: !routeState.showRoadworks,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _FilterChip(
+                                label: 'All',
+                                active:
+                                    routeState.roadworksFilter ==
+                                    RoadworksFilter.all,
+                                onTap: () => ref
+                                    .read(routeProvider.notifier)
+                                    .setRoadworksFilter(RoadworksFilter.all),
+                              ),
+                              const SizedBox(width: 4),
+                              _FilterChip(
+                                label: 'Now',
+                                active:
+                                    routeState.roadworksFilter ==
+                                    RoadworksFilter.now,
+                                onTap: () => ref
+                                    .read(routeProvider.notifier)
+                                    .setRoadworksFilter(RoadworksFilter.now),
+                              ),
+                              const SizedBox(width: 4),
+                              _FilterChip(
+                                label: 'Soon',
+                                active:
+                                    routeState.roadworksFilter ==
+                                    RoadworksFilter.soon,
+                                onTap: () => ref
+                                    .read(routeProvider.notifier)
+                                    .setRoadworksFilter(RoadworksFilter.soon),
+                              ),
+                              const SizedBox(width: 4),
+                              _FilterChip(
+                                label: 'Later',
+                                active:
+                                    routeState.roadworksFilter ==
+                                    RoadworksFilter.later,
+                                onTap: () => ref
+                                    .read(routeProvider.notifier)
+                                    .setRoadworksFilter(RoadworksFilter.later),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                 ],
                 // Radius toggle when warning location is set.
@@ -253,117 +353,174 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
                     label: 'Warning Area',
                     icon: Icons.radar_rounded,
                     active: warningState.showRadiusCircle,
-                    onTap: () => ref.read(warningProvider.notifier).toggleRadiusCircle(),
+                    onTap: () =>
+                        ref.read(warningProvider.notifier).toggleRadiusCircle(),
                   ),
                   const SizedBox(height: 8),
                 ],
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  // Radius toggle: only if a location is selected.
-                  if (warningState.hasLocation) ...[
-                    _LayerChip(
-                      label: 'Radius',
-                      icon: Icons.radar_rounded,
-                      active: _showRadius,
-                      onTap: () => setState(() => _showRadius = !_showRadius),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  _RouteCreationButton(
-                    isActive: _routeStep > 0,
-                    onTap: _routeStep > 0 ? _cancelRouteCreation : _startRouteCreation,
-                  ),
-                ]),
+                _RouteCreationButton(
+                  isActive: _routeStep > 0,
+                  onTap: _routeStep > 0
+                      ? _cancelRouteCreation
+                      : _startRouteCreation,
+                ),
               ],
             ),
           ),
-            
-           // Handles left-edge swipe.
-           Positioned(
-             left: 0, top: 0, bottom: 0, width: 24,
-             child: GestureDetector(
-               behavior: HitTestBehavior.translucent,
-               onHorizontalDragEnd: (details) {
-                 if (details.primaryVelocity! > 300) { // Fast swipe right
-                   Haptics.select();
-                   AppRouter.goToWarnings();
-                 }
-               },
-               child: Container(color: Colors.transparent),
-             ),
-             ),
+
+          // Handles left-edge swipe.
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 24,
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onHorizontalDragEnd: (details) {
+                if (details.primaryVelocity! > 300) {
+                  // Fast swipe right
+                  Haptics.select();
+                  AppRouter.goToWarnings();
+                }
+              },
+              child: Container(color: Colors.transparent),
+            ),
+          ),
         ],
       ),
     );
   }
 
+  /// Filters roadworks list based on selected filter.
+  Iterable<RoadworkDto> _filterRoadworks(
+    List<List<RoadworkDto>> roadworks,
+    RoadworksFilter filter,
+  ) {
+    switch (filter) {
+      case RoadworksFilter.now:
+        return roadworks[0];
+      case RoadworksFilter.soon:
+        return roadworks[1];
+      case RoadworksFilter.later:
+        return roadworks[2];
+      case RoadworksFilter.all:
+        return roadworks.expand((l) => l);
+    }
+  }
+
   /// Aggregates and builds all map markers (route, events, warnings) based on current state.
-  List<Marker> _buildMarkers(RouteState routeState, WarningState warningState, bool hasRoute, bool isRadiusMode) {
+  List<Marker> _buildMarkers(
+    RouteState routeState,
+    WarningState warningState,
+    bool hasRoute,
+    bool isRadiusMode,
+  ) {
     final markers = <Marker>[];
 
     // Temporary start marker (during creation).
     if (_tempStartPoint != null) {
-      markers.add(_marker(_tempStartPoint!, const MapMarker.small(icon: Icons.circle, color: Colors.green)));
+      markers.add(
+        _marker(
+          _tempStartPoint!,
+          const MapMarker.small(icon: Icons.circle, color: Colors.green),
+        ),
+      );
     }
 
     // Route markers.
     if (hasRoute && routeState.polyline.isNotEmpty) {
-      markers.add(_marker(routeState.polyline.first, const MapMarker.small(icon: Icons.circle, color: Colors.green)));
-      markers.add(_marker(routeState.polyline.last, MapMarker.small(icon: Icons.flag_rounded, color: AppTheme.error)));
+      markers.add(
+        _marker(
+          routeState.polyline.first,
+          const MapMarker.small(icon: Icons.circle, color: Colors.green),
+        ),
+      );
+      markers.add(
+        _marker(
+          routeState.polyline.last,
+          MapMarker.small(icon: Icons.flag_rounded, color: AppTheme.error),
+        ),
+      );
     }
 
     // Radius marker (shown when radius toggle is active).
-    if (_showRadius && warningState.center != null) {
-      markers.add(_marker(warningState.center!, MapMarker.small(icon: Icons.my_location, color: AppTheme.primary)));
+    if (warningState.showRadiusCircle && warningState.center != null) {
+      markers.add(
+        _marker(
+          warningState.center!,
+          MapMarker.small(icon: Icons.my_location, color: AppTheme.primary),
+        ),
+      );
     }
 
     // Charging stations.
     if (routeState.showCharging) {
-      markers.addAll(_entityMarkers(
-        items: routeState.chargingStations,
-        id: (i) => 'cs_${i.identifier}',
-        location: (i) => i.latitude != null && i.longitude != null ? LatLng(i.latitude!, i.longitude!) : null,
-        icon: (_) => Icons.ev_station,
-        color: (_) => Colors.green.withValues(alpha: 0.85),
-        sheet: _chargingSheet,
-        size: 24,
-      ));
+      markers.addAll(
+        _entityMarkers(
+          items: routeState.chargingStations,
+          id: (i) => 'cs_${i.identifier}',
+          location: (i) => i.latitude != null && i.longitude != null
+              ? LatLng(i.latitude!, i.longitude!)
+              : null,
+          icon: (_) => Icons.ev_station,
+          color: (_) => Colors.green.withValues(alpha: 0.85),
+          sheet: _chargingSheet,
+          size: 24,
+        ),
+      );
     }
 
     // Parking areas.
     if (routeState.showParking) {
-      markers.addAll(_entityMarkers(
-        items: routeState.parkingAreas,
-        id: (i) => 'pk_${i.identifier}',
-        location: (i) => i.latitude != null && i.longitude != null ? LatLng(i.latitude!, i.longitude!) : null,
-        icon: (_) => Icons.local_parking,
-        color: (_) => Colors.blue.withValues(alpha: 0.8),
-        sheet: _parkingSheet,
-        size: 22,
-      ));
+      markers.addAll(
+        _entityMarkers(
+          items: routeState.parkingAreas,
+          id: (i) => 'pk_${i.identifier}',
+          location: (i) => i.latitude != null && i.longitude != null
+              ? LatLng(i.latitude!, i.longitude!)
+              : null,
+          icon: (_) => Icons.local_parking,
+          color: (_) => Colors.blue.withValues(alpha: 0.8),
+          sheet: _parkingSheet,
+          size: 22,
+        ),
+      );
     }
 
-    // Roadworks with theme-aware colors.
-    if (routeState.roadworks.isNotEmpty) {
-      markers.addAll(_entityMarkers(
-        items: routeState.roadworks.expand((l) => l),
-        id: (i) => 'rw_${i.identifier}',
-        location: (i) => i.latitude != null && i.longitude != null ? LatLng(i.latitude!, i.longitude!) : null,
-        icon: (i) => i.isBlocked ? Icons.block : Icons.construction,
-        color: (i) => (i.isBlocked ? AppTheme.error : const Color(0xFFF57C00)).withValues(alpha: 0.85),
-        sheet: _roadworkSheet,
-      ));
+    if (routeState.showRoadworks && routeState.roadworks.isNotEmpty) {
+      final filtered = _filterRoadworks(
+        routeState.roadworks,
+        routeState.roadworksFilter,
+      );
+      markers.addAll(
+        _entityMarkers(
+          items: filtered,
+          id: (i) => 'rw_${i.identifier}',
+          location: (i) => i.latitude != null && i.longitude != null
+              ? LatLng(i.latitude!, i.longitude!)
+              : null,
+          icon: (i) => i.isBlocked ? Icons.block : Icons.construction,
+          color: (i) => (i.isBlocked ? AppTheme.error : const Color(0xFFF57C00))
+              .withValues(alpha: 0.85),
+          sheet: _roadworkSheet,
+        ),
+      );
     }
 
     // Warnings.
-    markers.addAll(_entityMarkers(
-      items: isRadiusMode ? warningState.warnings : routeState.warnings,
-      id: (i) => 'wn_${i.title.hashCode}',
-      location: (i) => i.latitude != null && i.longitude != null ? LatLng(i.latitude!, i.longitude!) : null,
-      icon: (_) => Icons.warning_amber_rounded,
-      color: (i) => i.severity.color.withValues(alpha: 0.85),
-      sheet: _warningSheet,
-      size: 26,
-    ));
+    markers.addAll(
+      _entityMarkers(
+        items: isRadiusMode ? warningState.warnings : routeState.warnings,
+        id: (i) => 'wn_${i.title.hashCode}',
+        location: (i) => i.latitude != null && i.longitude != null
+            ? LatLng(i.latitude!, i.longitude!)
+            : null,
+        icon: (_) => Icons.warning_amber_rounded,
+        color: (i) => i.severity.color.withValues(alpha: 0.85),
+        sheet: _warningSheet,
+        size: 26,
+      ),
+    );
 
     return markers;
   }
@@ -415,14 +572,20 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
     title: p.title,
     subtitle: p.subtitle,
     description: p.descriptionText,
-    additionalChips: p.isLorryParking ? [
-      Chip(
-        avatar: const Icon(Icons.local_shipping, size: 16, color: Colors.blue),
-        label: const Text('Lorry parking'),
-        backgroundColor: Colors.blue.withValues(alpha: 0.1),
-        side: BorderSide.none,
-      ),
-    ] : null,
+    additionalChips: p.isLorryParking
+        ? [
+            Chip(
+              avatar: const Icon(
+                Icons.local_shipping,
+                size: 16,
+                color: Colors.blue,
+              ),
+              label: const Text('Lorry parking'),
+              backgroundColor: Colors.blue.withValues(alpha: 0.1),
+              side: BorderSide.none,
+            ),
+          ]
+        : null,
   );
 
   /// Builds a details sheet for a roadwork event.
@@ -437,12 +600,31 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
       description: rw.descriptionText,
       additionalChips: [
         if (rw.isBlocked)
-          Chip(avatar: Icon(Icons.block, size: 16, color: c), label: const Text('Road blocked'), backgroundColor: c.withValues(alpha: 0.1), side: BorderSide.none),
-        Chip(avatar: Icon(Icons.access_time, size: 16, color: c), label: Text(rw.timeInfo), backgroundColor: c.withValues(alpha: 0.1), side: BorderSide.none),
+          Chip(
+            avatar: Icon(Icons.block, size: 16, color: c),
+            label: const Text('Road blocked'),
+            backgroundColor: c.withValues(alpha: 0.1),
+            side: BorderSide.none,
+          ),
+        Chip(
+          avatar: Icon(Icons.access_time, size: 16, color: c),
+          label: Text(rw.timeInfo),
+          backgroundColor: c.withValues(alpha: 0.1),
+          side: BorderSide.none,
+        ),
         if (rw.length != null)
-          Chip(label: Text(rw.length!), backgroundColor: c.withValues(alpha: 0.1), side: BorderSide.none),
+          Chip(
+            label: Text(rw.length!),
+            backgroundColor: c.withValues(alpha: 0.1),
+            side: BorderSide.none,
+          ),
         if (rw.speedLimit != null)
-          Chip(avatar: Icon(Icons.speed, size: 16, color: c), label: Text(rw.speedLimit!), backgroundColor: c.withValues(alpha: 0.1), side: BorderSide.none),
+          Chip(
+            avatar: Icon(Icons.speed, size: 16, color: c),
+            label: Text(rw.speedLimit!),
+            backgroundColor: c.withValues(alpha: 0.1),
+            side: BorderSide.none,
+          ),
       ],
     );
   }
@@ -476,7 +658,6 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
     ref.read(routeInputProvider.notifier).setEnd('');
   }
 
-  
   /// Cancels route creation mode.
   void _cancelRouteCreation() {
     Haptics.light();
@@ -485,23 +666,27 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
       _tempStartPoint = null;
     });
   }
-  
+
   /// Handles map tap during route creation.
   Future<void> _handleRouteTap(LatLng point) async {
     Haptics.select();
-    
+
     // Uses exact coordinates for routing precision.
-    final coordString = '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
-    
+    final coordString =
+        '${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}';
+
     // Tries to get a human-readable name just for user feedback (Toast).
     String displayName = coordString;
     try {
-      final name = await GeocodingService.getPlaceName(point.latitude, point.longitude);
+      final name = await GeocodingService.getPlaceName(
+        point.latitude,
+        point.longitude,
+      );
       if (name != null) displayName = name;
     } catch (_) {}
-    
+
     if (!mounted) return;
-    
+
     if (_routeStep == 1) {
       // First tap: set start.
       Haptics.medium();
@@ -519,13 +704,12 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
         _routeStep = 0;
         _tempStartPoint = null;
       });
-      
+
       // Auto-calculate route.
-      final success = await ref.read(routeProvider.notifier).calculate(
-        ref.read(routeInputProvider).start,
-        displayName,
-      );
-      
+      final success = await ref
+          .read(routeProvider.notifier)
+          .calculate(ref.read(routeInputProvider).start, displayName);
+
       if (mounted) {
         if (success) {
           ToastService.success(context, 'Route calculated!');
@@ -535,7 +719,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with AutomaticKeepAliveCl
       }
     }
   }
-  
+
   /// Shows route comparison sheet.
   void _showRouteComparison() {
     Haptics.medium();
@@ -550,7 +734,11 @@ class _MapControls extends StatelessWidget {
   final VoidCallback onZoomOut;
   final VoidCallback? onRecenter;
 
-  const _MapControls({required this.onZoomIn, required this.onZoomOut, this.onRecenter});
+  const _MapControls({
+    required this.onZoomIn,
+    required this.onZoomOut,
+    this.onRecenter,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -558,12 +746,18 @@ class _MapControls extends StatelessWidget {
     return GlassContainer(
       padding: EdgeInsets.zero,
       // Default radius is 12 (AppTheme.radiusSm) and blur is 8, matching other controls.
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        _ControlButton(icon: Icons.add, onTap: onZoomIn),
-        _Divider(),
-        _ControlButton(icon: Icons.remove, onTap: onZoomOut),
-        if (onRecenter != null) ...[_Divider(), _ControlButton(icon: Icons.center_focus_strong, onTap: onRecenter!)],
-      ]),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ControlButton(icon: Icons.add, onTap: onZoomIn),
+          _Divider(),
+          _ControlButton(icon: Icons.remove, onTap: onZoomOut),
+          if (onRecenter != null) ...[
+            _Divider(),
+            _ControlButton(icon: Icons.center_focus_strong, onTap: onRecenter!),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -586,7 +780,11 @@ class _ControlButton extends StatelessWidget {
         },
         child: Padding(
           padding: const EdgeInsets.all(10),
-          child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          child: Icon(
+            icon,
+            size: 20,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );
@@ -598,7 +796,10 @@ class _Divider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(height: 1, color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08));
+    return Container(
+      height: 1,
+      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+    );
   }
 }
 
@@ -610,7 +811,12 @@ class _LayerChip extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
-  const _LayerChip({required this.label, required this.icon, required this.active, required this.onTap});
+  const _LayerChip({
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -621,11 +827,57 @@ class _LayerChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       color: active ? cs.primary.withValues(alpha: 0.9) : null,
       borderColor: active ? cs.primary : null,
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 16, color: active ? cs.onPrimary : cs.onSurfaceVariant),
-        const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: active ? cs.onPrimary : cs.onSurfaceVariant)),
-      ]),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: active ? cs.onPrimary : cs.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: active ? cs.onPrimary : cs.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GlassContainer(
+      onTap: onTap,
+      borderRadius: AppTheme.radiusLg,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      color: active ? cs.secondary.withValues(alpha: 0.8) : null,
+      borderColor: active ? cs.secondary : null,
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: active ? cs.onSecondary : cs.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
@@ -641,7 +893,7 @@ class _RouteCreationButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final color = isActive ? cs.error : cs.primary;
-    
+
     return GlassContainer(
       onTap: onTap,
       borderRadius: AppTheme.radiusLg,
@@ -649,11 +901,7 @@ class _RouteCreationButton extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            isActive ? Icons.close : Icons.add_road,
-            size: 16,
-            color: color,
-          ),
+          Icon(isActive ? Icons.close : Icons.add_road, size: 16, color: color),
           const SizedBox(width: 6),
           Text(
             isActive ? 'Cancel' : 'Create Route',
@@ -685,7 +933,11 @@ class _RouteInstructionPill extends StatelessWidget {
         color: cs.primaryContainer.withValues(alpha: 0.9),
         child: Text(
           step == 1 ? 'Tap start location' : 'Tap destination',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onPrimaryContainer),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: cs.onPrimaryContainer,
+          ),
         ),
       ),
     );

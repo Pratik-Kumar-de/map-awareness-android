@@ -103,22 +103,6 @@ Focus: hazards, weather impact, precautions. Be practical.''';
 
     try {
       final model = GenerativeModel(model: 'gemini-2.5-flash-lite', apiKey: apiKey);
-      final severeCount = activeWarnings.where((w) => w.severity.level >= 3).length;
-      
-      // Builds concise environment info.
-      String envInfo = '';
-      if (currentWeather != null) {
-        envInfo += '\n- Weather: ${currentWeather.icon} ${currentWeather.temperature?.toStringAsFixed(0)}°C, ${currentWeather.description}';
-        if (currentWeather.windSpeed != null) envInfo += ', Wind ${currentWeather.windSpeed!.toStringAsFixed(0)}km/h';
-      }
-      
-      if (airQuality != null) {
-        envInfo += '\n- Air Quality: AQI ${airQuality.usAqi} (PM2.5: ${airQuality.pm25?.toStringAsFixed(1)})';
-      }
-      
-      if (floodData != null && floodData.riverDischarge != null) {
-        envInfo += '\n- Flood Risk: River discharge ${floodData.riverDischarge?.toStringAsFixed(1)} ${floodData.unit ?? 'm³/s'}';
-      }
       
       final prompt = '''Brief English safety summary (max 4 sentences) for $location${radiusKm != null ? ' (radius ${radiusKm.toInt()}km)' : ''}.
 

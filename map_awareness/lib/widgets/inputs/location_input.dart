@@ -72,15 +72,12 @@ class _AutocompleteTextFieldState extends State<AutocompleteTextField> {
     super.dispose();
   }
 
-  /// Fetches suggestions with debounce, uses setState to trigger rebuild.
-  void _fetchSuggestions(String query) {
+  void _handleInput(String query) {
     _debounce?.cancel();
     
-    // Skip if query unchanged (avoids redundant calls).
     if (query == _lastQuery) return;
     _lastQuery = query;
     
-    // Clear suggestions immediately for short queries.
     if (query.length < 2) {
       if (_suggestions.isNotEmpty) setState(() => _suggestions = []);
       return;
@@ -88,7 +85,6 @@ class _AutocompleteTextFieldState extends State<AutocompleteTextField> {
     
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       final results = await GeocodingService.search(query, limit: 5);
-      // Use setState to properly trigger RawAutocomplete rebuild.
       if (mounted) setState(() => _suggestions = results);
     });
   }
@@ -99,18 +95,13 @@ class _AutocompleteTextFieldState extends State<AutocompleteTextField> {
     return RawAutocomplete<GeocodingResult>(
       textEditingController: widget.controller,
       focusNode: _focusNode,
-      // optionsBuilder must return synchronously; async handled via setState.
       optionsBuilder: (v) {
-        _fetchSuggestions(v.text);
+        _handleInput(v.text);
         return _suggestions;
       },
       displayStringForOption: (result) => result.displayName,
       onSelected: (result) {
-        // RawAutocomplete auto-updates controller via displayStringForOption.
-        // Sync lastQuery after frame to match the updated text.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() => _lastQuery = widget.controller.text);
-        });
+        _lastQuery = result.displayName;
         setState(() => _suggestions = []);
       },
       fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
@@ -119,6 +110,8 @@ class _AutocompleteTextFieldState extends State<AutocompleteTextField> {
           focusNode: focusNode,
           style: theme.textTheme.bodyLarge,
           textInputAction: widget.textInputAction,
+          autocorrect: false,
+          enableSuggestions: false,
           decoration: InputDecoration(
             labelText: widget.label,
             hintText: widget.hint,
@@ -208,7 +201,6 @@ class LocationInput extends StatelessWidget {
     );
   }
 
-  /// Builds autocomplete input field with GeocodingService suggestions.
   Widget _buildInput(BuildContext context, {required TextEditingController controller, required String label, required String hint, required IconData icon, required Color iconColor, Widget? suffixWidget}) {
     final theme = Theme.of(context);
     return Autocomplete<GeocodingResult>(
@@ -216,20 +208,14 @@ class LocationInput extends StatelessWidget {
       displayStringForOption: (r) => r.displayName,
       onSelected: (r) => controller.text = r.displayName,
       fieldViewBuilder: (ctx, textController, focusNode, onSubmit) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (textController.text != controller.text) textController.text = controller.text;
-        });
-        controller.addListener(() {
-          try {
-            if (textController.text != controller.text) textController.text = controller.text;
-          } catch (_) {
-            // Controller may be disposed, ignore
-          }
-        });
+        textController.text = controller.text;
         return TextField(
           controller: textController,
           focusNode: focusNode,
           style: theme.textTheme.bodyLarge,
+          autocorrect: false,
+          enableSuggestions: false,
+          onChanged: (v) => controller.text = v,
           decoration: InputDecoration(
             labelText: label,
             hintText: hint,
@@ -305,10 +291,7 @@ class SearchField extends StatefulWidget {
 /// State for SearchField managing focus, autocomplete suggestions, and visual feedback.
 class _SearchFieldState extends State<SearchField> {
   bool _isFocused = false;
-  Timer? _debounce;
-  List<GeocodingResult> _suggestions = [];
   final FocusNode _focusNode = FocusNode();
-  String _lastQuery = '';
 
   @override
   void initState() {
@@ -318,30 +301,8 @@ class _SearchFieldState extends State<SearchField> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _focusNode.dispose();
     super.dispose();
-  }
-
-  /// Fetches suggestions with debounce, uses setState to trigger rebuild.
-  void _fetchSuggestions(String query) {
-    _debounce?.cancel();
-    
-    // Skip if query unchanged (avoids redundant calls).
-    if (query == _lastQuery) return;
-    _lastQuery = query;
-    
-    // Clear suggestions immediately for short queries.
-    if (query.length < 2) {
-      if (_suggestions.isNotEmpty) setState(() => _suggestions = []);
-      return;
-    }
-    
-    _debounce = Timer(const Duration(milliseconds: 300), () async {
-      final results = await GeocodingService.search(query, limit: 5);
-      // Use setState to properly trigger RawAutocomplete rebuild.
-      if (mounted) setState(() => _suggestions = results);
-    });
   }
 
   @override
@@ -363,21 +324,15 @@ class _SearchFieldState extends State<SearchField> {
           optionsBuilder: (text) => text.text.length < 2 ? [] : GeocodingService.search(text.text),
           displayStringForOption: (r) => r.displayName,
           onSelected: (r) => widget.controller.text = r.displayName,
-          fieldViewBuilder: (ctx, controller, focusNode, onSubmit) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (controller.text != widget.controller.text) controller.text = widget.controller.text;
-            });
-            widget.controller.addListener(() {
-              try {
-                if (controller.text != widget.controller.text) controller.text = widget.controller.text;
-              } catch (_) {
-                // Controller may be disposed, ignore
-              }
-            });
+          fieldViewBuilder: (ctx, textController, focusNode, onSubmit) {
+            textController.text = widget.controller.text;
             return TextField(
-              controller: controller,
+              controller: textController,
               focusNode: focusNode,
               style: theme.textTheme.bodyLarge,
+              autocorrect: false,
+              enableSuggestions: false,
+              onChanged: (v) => widget.controller.text = v,
               decoration: InputDecoration(
                 hintText: widget.hintText,
                 hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
