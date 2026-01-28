@@ -1,3 +1,32 @@
+# Map Awareness Android App
+
+## Project Type
+University student team project
+
+## Description
+An Android application focused on map-based location awareness.
+The project explores usability, user experience (UX), and intuitive UI design
+for location-based features.
+
+## My Role
+UI/UX Designer & Android Developer
+
+## My Responsibilities
+- Designed the user interface (UI) for the Android application
+- Focused on user experience (UX) and usability
+- Implemented Android layouts and navigation
+- Worked with map and location awareness features
+- Managed Git and GitHub version control
+
+## Team
+This project was developed by a team of 3 students as part of a university course.
+
+## Technologies Used
+- Android (Java / XML)
+- Google Maps API
+- Git & GitHub
+
+
 # Map Awareness
 
 ## Getting started
